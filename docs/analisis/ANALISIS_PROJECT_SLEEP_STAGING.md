@@ -530,9 +530,7 @@ Skill bawaan yang sudah aktif di sesi ini dan berguna: **`dataviz`** (grafik has
 | File | Isi |
 |---|---|
 | `scripts/edfx_eda.py` | Parser EDF/EDF+ (tanpa MNE) + EDA lengkap (kanal, durasi, distribusi kelas, usia, transisi) |
-| `scripts/edfx_features.py` | Ekstraksi fitur per-epoch (band power EEG, EOG, EMG) dari 153 rekaman SC |
-| `scripts/edfx_ablation.py` | Ablation GBDT: modalitas, konteks, class weight |
-| `scripts/edfx_ablation_c.py` | Uji kebocoran data: epoch-wise vs subject-wise |
+| `edfx_features.py`, `edfx_ablation.py`, `edfx_ablation_c.py` | Ekstraksi 26 fitur per-epoch dan ablasi GBDT (modalitas, konteks, bobot kelas, epoch-wise vs subject-wise). Sudah dihapus dari folder kerja karena belum dimulai bersama; tersedia di riwayat Git (commit `6dfc9b9`, folder `scripts/`) |
 | `results/eda/eda_summary.txt` | Output EDA mentah |
 | `results/ablation/ablation_results.txt`, `ablation_c.txt` | Output ablation mentah |
 

@@ -47,4 +47,4 @@ TRANSITION P(next|cur) SC-78 trimmed (rows W,N1,N2,N3,REM):
   N2  0.015 0.027 0.908 0.038 0.012
   N3  0.010 0.005 0.187 0.797 0.001
   REM 0.018 0.027 0.013 0.000 0.942
-Self-transition (stay) rate overall: 0.898; isolated epochs (≠ both neighbours): 6864
+Self-transition (stay) rate overall: 0.898; isolated epochs (differ from both neighbours): 6864

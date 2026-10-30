@@ -21,8 +21,8 @@ Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) unt
 │   ├── tables/         # tabel hasil
 │   ├── logs/           # log training
 │   └── checkpoints/    # bobot model (tidak di-commit)
-├── scripts/            # skrip EDA, ekstraksi fitur, dan ablasi baseline
-├── src/sleepstaging/   # kode inti (data, model, loss, training, evaluasi)
+├── scripts/            # skrip EDA
+├── src/                # kode inti (diisi bertahap mulai Fase 1)
 ├── tests/              # pengujian (jumlah epoch, tidak ada subjek yang tumpang tindih)
 ├── requirements.txt
 └── README.md

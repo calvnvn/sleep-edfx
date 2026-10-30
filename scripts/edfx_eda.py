@@ -89,6 +89,7 @@ def trim_wake(lab, minutes=30):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # console Windows (cp1252) tidak crash pada karakter non-ASCII
     recs = []
     for sub in ["sleep-cassette", "sleep-telemetry"]:
         for psg in sorted(glob.glob(os.path.join(ROOT, sub, "*-PSG.edf"))):
@@ -179,13 +180,13 @@ def main():
         lines.append("  " + NAMES[i].ljust(4) + " ".join(f"{p:.3f}" for p in P[i]))
     # epochs where label differs from both neighbours
     iso = sum(int(((l[1:-1] != l[:-2]) & (l[1:-1] != l[2:])).sum()) for l in [r["lab_trim"] for r in rs])
-    lines.append(f"Self-transition (stay) rate overall: {np.trace(T)/T.sum():.3f}; isolated epochs (≠ both neighbours): {iso}")
+    lines.append(f"Self-transition (stay) rate overall: {np.trace(T)/T.sum():.3f}; isolated epochs (differ from both neighbours): {iso}")
     txt = "\n".join(lines)
     print(txt)
     with open(os.path.join(OUT, "eda_summary.txt"), "w", encoding="utf-8") as f:
         f.write(txt)
-    json.dump([{k: v for k, v in r.items() if k != "lab_trim"} for r in recs],
-              open(os.path.join(OUT, "eda_records.json"), "w"), default=str)
+    with open(os.path.join(OUT, "eda_records.json"), "w", encoding="utf-8") as f:
+        json.dump([{k: v for k, v in r.items() if k != "lab_trim"} for r in recs], f, default=str)
 
 
 if __name__ == "__main__":
