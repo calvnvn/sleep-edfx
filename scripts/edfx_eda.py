@@ -3,8 +3,8 @@ import os, re, sys, json, glob
 import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(REPO, "data", "raw", "sleep-edfx")
-OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(REPO, "results", "eda")
+ROOT = os.path.join(REPO, "data", "raw", "sleep-edfx")  # overridable from the command line (see __main__)
+OUT = os.path.join(REPO, "results", "eda")
 
 
 def read_header(path):
@@ -190,4 +190,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        ROOT = sys.argv[1]
+    if len(sys.argv) > 2:
+        OUT = sys.argv[2]
     main()
