@@ -1,0 +1,26 @@
+# Lingkungan
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+
+# Data mentah dan turunan (dapat diunduh / dibuat ulang)
+data/raw/
+data/processed/*
+!data/processed/.gitkeep
+*.edf
+*.npz
+
+# Hasil training
+*.pt
+*.pth
+results/checkpoints/*
+!results/checkpoints/.gitkeep
+results/runs/
+runs/
+
+# Sementara
+temp_*
+.vscode/
+.idea/

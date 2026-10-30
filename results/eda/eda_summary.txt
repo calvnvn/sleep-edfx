@@ -1,0 +1,50 @@
+SC-all(153)  full n_rec=153 subj=78 epochs=416424 scored5=414961 hours=3470.2
+   W=285433(68.5%) N1=21522(5.2%) N2=69132(16.6%) N3=13039(3.1%) REM=25835(6.2%) MT=128(0.0%) ?=1335(0.3%)
+   5-class: W=68.8% N1=5.2% N2=16.7% N3=3.1% REM=6.2%
+SC-all(153)  trim n_rec=153 subj=78 epochs=195767 scored5=195469 hours=3470.2
+   W=65941(33.7%) N1=21522(11.0%) N2=69132(35.3%) N3=13039(6.7%) REM=25835(13.2%) MT=128(0.1%) ?=170(0.1%)
+   5-class: W=33.7% N1=11.0% N2=35.4% N3=6.7% REM=13.2%
+SC-20(39)    full n_rec=39 subj=20 epochs=107380 scored5=106414 hours=894.8
+   W=72391(67.4%) N1=2804(2.6%) N2=17799(16.6%) N3=5703(5.3%) REM=7717(7.2%) MT=61(0.1%) ?=905(0.8%)
+   5-class: W=68.0% N1=2.6% N2=16.7% N3=5.4% REM=7.3%
+SC-20(39)    trim n_rec=39 subj=20 epochs=42368 scored5=42307 hours=894.8
+   W=8284(19.6%) N1=2804(6.6%) N2=17799(42.0%) N3=5703(13.5%) REM=7717(18.2%) MT=61(0.1%) ?=0(0.0%)
+   5-class: W=19.6% N1=6.6% N2=42.1% N3=13.5% REM=18.2%
+ST(44)       full n_rec=44 subj=22 epochs=45446 scored5=42691 hours=378.8
+   W=4423(9.7%) N1=3653(8.0%) N2=19851(43.7%) N3=6415(14.1%) REM=8349(18.4%) MT=83(0.2%) ?=2672(5.9%)
+   5-class: W=10.4% N1=8.6% N2=46.5% N3=15.0% REM=19.6%
+ST(44)       trim n_rec=44 subj=22 epochs=44157 scored5=42467 hours=378.8
+   W=4199(9.5%) N1=3653(8.3%) N2=19851(45.0%) N3=6415(14.5%) REM=8349(18.9%) MT=83(0.2%) ?=1607(3.6%)
+   5-class: W=9.9% N1=8.6% N2=46.7% N3=15.1% REM=19.7%
+ALL(197)     full n_rec=197 subj=100 epochs=461870 scored5=457652 hours=3849.0
+   W=289856(62.8%) N1=25175(5.5%) N2=88983(19.3%) N3=19454(4.2%) REM=34184(7.4%) MT=211(0.0%) ?=4007(0.9%)
+   5-class: W=63.3% N1=5.5% N2=19.4% N3=4.3% REM=7.5%
+ALL(197)     trim n_rec=197 subj=100 epochs=239924 scored5=237936 hours=3849.0
+   W=70140(29.2%) N1=25175(10.5%) N2=88983(37.1%) N3=19454(8.1%) REM=34184(14.2%) MT=211(0.1%) ?=1777(0.7%)
+   5-class: W=29.5% N1=10.6% N2=37.4% N3=8.2% REM=14.4%
+
+CHANNEL LAYOUTS:
+ [cassette] n=153 e.g.SC4001E: ('EEG Fpz-Cz@100Hz', 'EEG Pz-Oz@100Hz', 'EOG horizontal@100Hz', 'Resp oro-nasal@1Hz', 'EMG submental@1Hz', 'Temp rectal@1Hz', 'Event marker@1Hz')
+ [telemetry] n=44 e.g.ST7011J: ('EEG Fpz-Cz@100Hz', 'EEG Pz-Oz@100Hz', 'EOG horizontal@100Hz', 'EMG submental@100Hz', 'Marker@10Hz')
+
+PREFILTER/UNITS example SC: [["EEG Fpz-Cz", "uV", "HP:0.5Hz LP:100Hz [enhanced cassette BW]"], ["EEG Pz-Oz", "uV", "HP:0.5Hz LP:100Hz [enhanced cassette BW]"], ["EOG horizontal", "uV", "HP:0.5Hz LP:100Hz [enhanced cassette BW]"], ["Resp oro-nasal", "", "HP:0.03Hz LP:0.9Hz"], ["EMG submental", "uV", "HP:16Hz Rectification LP:0.7Hz"], ["Temp rectal", "DegC", ""], ["Event marker", "", "Hold during 2 seconds"]]
+PREFILTER/UNITS example ST: [["EEG Fpz-Cz", "uV", "LP:800Hz HP:0.03Hz"], ["EEG Pz-Oz", "uV", "LP:800Hz HP:0.03Hz"], ["EOG horizontal", "uV", "LP:800Hz HP:0.03Hz"], ["EMG submental", "uV", "LP:800Hz HP:0.03Hz"], ["Marker", "ID+M-E", ""]]
+SC-all(153): hours mean=22.68 min=17.00 max=24.00; hypnogram_end != psg_end in 150 recs, e.g. [('SC4001E', 1.917), ('SC4002E', 0.417), ('SC4011E', 0.65), ('SC4012E', 0.25)]
+ST(44): hours mean=8.61 min=7.49 max=10.70; hypnogram_end != psg_end in 37 recs, e.g. [('ST7011J', -0.872), ('ST7012J', -0.033), ('ST7021J', -0.833), ('ST7022J', -0.678)]
+SC-all(153): nights-per-subject={2: 75, 1: 3} age range=25-101 median=57 sex={'Female': 41, 'Male': 37}
+ST(44): nights-per-subject={2: 22} age range=18-78 median=35 sex={'Male': 7, 'Female': 15}
+SC subjects with single night: ['SC13', 'SC36', 'SC52']
+SC-all(153) per-record (trimmed) N1% mean=11.1 min=1.4 max=42.1; W% mean=29.8; N3% mean=7.5 min=0.0 recs N3<1%: 40
+ST(44) per-record (trimmed) N1% mean=8.6 min=2.3 max=20.5; W% mean=9.9; N3% mean=15.1 min=0.0 recs N3<1%: 3
+SC age 25-40: n_rec=39 W=19.6% N1=6.6% N2=42.1% N3=13.5% REM=18.2%
+SC age 40-60: n_rec=41 W=33.2% N1=10.3% N2=37.7% N3=5.5% REM=13.4%
+SC age 60-80: n_rec=41 W=31.2% N1=13.7% N2=35.9% N3=6.2% REM=13.0%
+SC age 80-120: n_rec=32 W=48.0% N1=12.6% N2=27.3% N3=2.8% REM=9.3%
+
+TRANSITION P(next|cur) SC-78 trimmed (rows W,N1,N2,N3,REM):
+  W   0.946 0.050 0.002 0.000 0.001
+  N1  0.089 0.724 0.158 0.000 0.028
+  N2  0.015 0.027 0.908 0.038 0.012
+  N3  0.010 0.005 0.187 0.797 0.001
+  REM 0.018 0.027 0.013 0.000 0.942
+Self-transition (stay) rate overall: 0.898; isolated epochs (≠ both neighbours): 6864

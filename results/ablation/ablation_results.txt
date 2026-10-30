@@ -1,0 +1,8 @@
+epochs=195469 subjects=78 records=153
+A1 EEG Fpz-Cz only                         ACC= 70.2 MF1= 59.6 k=0.580 | W=79.2 N1=19.6 N2=77.3 N3=62.2 REM=59.6
+A2 EEG Fpz-Cz + Pz-Oz                      ACC= 75.0 MF1= 65.3 k=0.650 | W=86.9 N1=27.5 N2=80.1 N3=65.9 REM=66.1
+A3 EEG(2) + EOG                            ACC= 77.0 MF1= 67.9 k=0.678 | W=88.5 N1=32.1 N2=80.8 N3=65.7 REM=72.4
+A4 EEG(2) + EOG + EMG                      ACC= 77.5 MF1= 69.1 k=0.685 | W=88.7 N1=35.3 N2=80.7 N3=65.8 REM=75.0
+A5 EEG Fpz-Cz + EMG (no EOG)               ACC= 71.4 MF1= 62.5 k=0.599 | W=80.4 N1=26.6 N2=76.8 N3=61.8 REM=66.9
+B1 A4 + context ±2 epochs                  ACC= 80.9 MF1= 73.7 k=0.733 | W=91.3 N1=44.5 N2=82.9 N3=67.9 REM=81.7
+B2 A4 + context ±2 + class_weight=balanced ACC= 79.4 MF1= 74.4 k=0.721 | W=90.8 N1=49.2 N2=80.7 N3=69.5 REM=81.7
