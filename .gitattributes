@@ -1,0 +1,6 @@
+# Akhir baris seragam di Windows, macOS, dan Linux
+* text=auto
+*.ipynb text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.png binary
