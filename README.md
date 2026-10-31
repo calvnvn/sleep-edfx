@@ -271,7 +271,22 @@ Jalankan notebook **berurutan**, dengan kernel `.venv`. Notebook mencari root re
 | `notebooks/01_eda.ipynb` | `results/eda/eda_records.json` (sudah di repositori) | 4 grafik di `results/figures/`, 1 tabel di `results/tables/` | Pada akhir sel 3 tercetak `All checks passed` |
 | `notebooks/02_preprocessing.ipynb` | Dataset lengkap | Grafik `02_*` di `results/figures/` | Sel D4 mencetak `153 recordings, 416,424 epochs; all counts match the EDA` |
 
-Estimasi waktu: TBD_WAKTU
+Estimasi waktu, diukur pada klon bersih di Windows 11 dengan jalur CPU:
+
+| Langkah | Waktu |
+|---|---|
+| Membuat `.venv` | ±20 detik |
+| Memasang `requirements.txt` | ±3,5 menit |
+| Memasang PyTorch CPU | ±3,5 menit |
+| `scripts/edfx_eda.py` | kurang dari 2 detik |
+| `01_eda.ipynb` (Run All) | ±20 detik |
+| `02_preprocessing.ipynb` (Run All) | ±15 detik |
+| Mengunduh dataset (8,1 GB) | bergantung koneksi internet |
+| Verifikasi `sha256sum` | ±35 detik |
+
+Waktu pemasangan paket bergantung pada kecepatan internet. Bagian E sampai J notebook 02 akan memproses seluruh 153 rekaman dan lebih lama; estimasinya diperbarui saat bagian itu selesai.
+
+> Menjalankan ulang notebook akan membuat git mencatat `01_eda.ipynb`, `02_preprocessing.ipynb`, dan grafik di `results/figures/` sebagai *modified*, karena gambar hasil render berbeda beberapa piksel antar komputer. Itu normal. Jangan commit perubahan tersebut kecuali Anda memang mengubah analisisnya; untuk membatalkannya, jalankan `git restore notebooks results/figures`.
 
 Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ada di `docs/belajar/`.
 
