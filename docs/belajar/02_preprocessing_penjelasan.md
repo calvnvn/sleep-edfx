@@ -1,6 +1,6 @@
-# Penjelasan Notebook 02_preprocessing, Bagian A sampai D: Dari Berkas EDF ke Label per Epoch
+# Penjelasan Notebook 02_preprocessing, Bagian A sampai J: Dari Berkas EDF ke Data Siap Latih
 
-Dokumen ini menemani `notebooks/02_preprocessing.ipynb`. Bagian E sampai J (*trimming*, penyaringan, EMG, normalisasi, pemeriksaan mutu, penyimpanan) akan ditambahkan setelah bagian-bagian itu dikerjakan.
+Dokumen ini menemani `notebooks/02_preprocessing.ipynb`. Bagian A sampai D membentuk label per epoch. Bagian E sampai J memangkas jendela tidur (*trimming*), menyaring sinyal, menentukan penanganan EMG, menormalisasi, memeriksa mutu seluruh rekaman, dan menyimpan hasilnya sebagai *cache*.
 
 ## Bagian 1. Gambaran besar
 
@@ -14,12 +14,12 @@ Dokumen ini menemani `notebooks/02_preprocessing.ipynb`. Bagian E sampai J (*tri
 |---|---|---|
 | Memasangkan berkas dan membaca struktur | A, B, C | Dibahas |
 | Membentuk label per epoch | D | Dibahas |
-| Memangkas jendela tidur (*trimming*) | E | Belum |
-| Menyaring EEG dan EOG | F | Belum |
-| Menangani EMG | G | Belum |
-| Memotong epoch dan menormalisasi | H | Belum |
-| Memeriksa mutu seluruh rekaman | I | Belum |
-| Menyimpan dan memverifikasi | J | Belum |
+| Memangkas jendela tidur (*trimming*) | E | Dibahas |
+| Menyaring EEG dan EOG | F | Dibahas |
+| Menangani EMG (keputusan K4) | G | Dibahas |
+| Memotong epoch dan menormalisasi | H | Dibahas |
+| Memeriksa mutu seluruh rekaman | I | Dibahas |
+| Menyimpan dan memverifikasi | J | Dibahas |
 
 ### 1.2 Perbedaan dengan notebook EDA
 
@@ -158,6 +158,178 @@ Angka 414.961 adalah "SC-78 sebelum *trimming*" pada dokumen Ref-1, dan 1.463 sa
 
 ---
 
+### Sel E1 sampai E3. *Trimming*: membuang Wake di luar jendela tidur
+
+**Analogi.** Sebuah film dua jam yang diawali dan diakhiri lima belas menit layar kosong. Kita memotong layar kosong itu, tetapi menyisakan sedikit jeda di awal dan akhir agar transisi masuk dan keluar dari tidur tetap terlihat.
+
+**Mengapa perlu.** Rekaman SC rata-rata berdurasi 22,7 jam karena perekam dibiarkan menyala sepanjang siang hari. Akibatnya Wake mencapai 68,8% dari seluruh epoch berlabel, dan sebagian besar Wake itu terjadi saat subjek beraktivitas biasa, bukan di sekitar tidur. Bagian ini tidak informatif bagi pembeda tahap tidur, mendominasi kelas, dan akan membiaskan statistik normalisasi bila tidak dibuang.
+
+**Aturan (`sleep_window`).**
+
+1. *Epoch tidur* adalah epoch berlabel 1 sampai 4 (N1, N2, N3, REM). Wake dan label −1 sengaja tidak dihitung sebagai tidur.
+2. Jendela dimulai 60 epoch (30 menit) sebelum epoch tidur pertama dan berakhir 60 epoch sesudah epoch tidur terakhir.
+3. `max(0, …)` dan `min(len(labels), …)` mencegah jendela melewati ujung rekaman. Angka `+ 1` pada batas atas diperlukan karena irisan Python bersifat eksklusif di ujung kanan.
+4. Epoch berlabel −1 **di dalam** jendela tidak dibuang. Ini penerapan keputusan K1: urutan waktu harus tetap utuh bagi Bi-LSTM.
+
+**Keluaran `SC4001E` (E1).** Tidur berlangsung dari epoch 1.021 sampai 1.741, sehingga jendelanya adalah [961, 1.802), yaitu 841 dari 2.650 epoch (7,0 jam dari 22,1 jam). Jumlah Wake turun dari 1.997 menjadi 188, sedangkan N1, N2, N3, dan REM tidak berubah sama sekali. Itu sifat penting *trimming*: ia hanya mengurangi Wake, tidak pernah menyentuh epoch tidur.
+
+**Cara membaca gambar (E2).** Area abu-abu adalah bagian yang dibuang (Wake pagi dan siang), area biru muda adalah jendela yang dipertahankan. Garis hypnogram yang rapat berada seluruhnya di area biru, dan di luarnya hanya ada garis datar Wake.
+
+**Uji unit (E3).** Ada dua lapis pemeriksaan, dan keduanya lolos.
+
+- Per rekaman: hitungan lima kelas di dalam jendela sama dengan `trim` pada `eda_records.json`. Perhitungan EDA dikerjakan oleh fungsi `trim_wake` yang ditulis terpisah, sehingga kesamaan ini menjadi pengesahan silang.
+- Agregat: 195.469 epoch berlabel dengan N1 21.522, N2 69.132, N3 13.039, dan REM 25.835 (sama dengan literatur). Jendela memuat 195.767 epoch, dan selisihnya, **298 epoch**, adalah epoch berlabel −1 yang tercatat pada keputusan K1.
+
+| Kelas | Sebelum | Sesudah | Porsi sebelum | Porsi sesudah |
+|---|---|---|---|---|
+| Wake | 285.433 | 65.941 | 68,8% | 33,7% |
+| N1 | 21.522 | 21.522 | 5,2% | 11,0% |
+| N2 | 69.132 | 69.132 | 16,7% | 35,4% |
+| N3 | 13.039 | 13.039 | 3,1% | 6,7% |
+| REM | 25.835 | 25.835 | 6,2% | 13,2% |
+
+Jumlah Wake 65.941 berbeda dari 69.824 yang dilaporkan sebagian makalah. Selisih itu bersumber dari aturan *trimming* yang berbeda antar penulis, bukan dari kekeliruan kita, dan jumlah N1 sampai REM yang identik membuktikannya. Karena itu aturan di atas ditulis eksplisit.
+
+### Sel F1 dan F2. Penyaringan *band-pass* untuk EEG dan EOG
+
+**Analogi.** *Equalizer* pada pemutar musik: frekuensi yang berisi informasi dibiarkan, dentum terlalu rendah dan desis terlalu tinggi diredam.
+
+**Mengapa 0,3 sampai 35 Hz.** Ciri tahap tidur terletak pada gelombang delta (0,5 sampai 4 Hz), theta, alfa, *sleep spindle* (11 sampai 16 Hz), dan beta rendah. Di atas ±35 Hz energi sinyal didominasi derau otot dan listrik, sedangkan di bawah 0,3 Hz hanya ada pergeseran garis dasar (*drift*). Perangkat SC sudah memasang *high-pass* 0,5 Hz dan *low-pass* 100 Hz pada kanal EEG dan EOG, sehingga efek nyata filter kita adalah *low-pass* 35 Hz, sedangkan batas bawah 0,3 Hz hanya menjaga agar sisa *drift* tidak lolos.
+
+**Cara kerja.**
+
+- `signal.butter(4, BAND, btype="bandpass", fs=FS, output="sos")` merancang filter Butterworth orde 4 dalam bentuk *second-order sections*, yang stabil secara numerik. Butterworth dipilih karena responsnya datar di pita lolos.
+- `signal.sosfiltfilt` menjalankan filter **maju lalu mundur**. Hasilnya berfase nol, yaitu gelombang tidak bergeser waktunya, sesuatu yang penting bagi struktur seperti *K-complex* yang harus tetap berada pada epoch yang benar. Konsekuensinya, gain dikuadratkan sehingga redaman dalam dB menjadi dua kali lipat.
+- Sinyal diubah ke `float64` sebelum disaring demi presisi, lalu dikembalikan ke `float32`.
+- Filter dijalankan pada jendela hasil *trimming*, bukan pada 24 jam penuh. Cara ini 3 sampai 4 kali lebih cepat, dan efek tepi hanya bertahan beberapa detik di dalam 30 menit Wake pada ujung jendela sehingga tidak menyentuh epoch tidur.
+
+**Cara membaca tabel gain (F1).**
+
+| Frekuensi (Hz) | 0,05 | 0,1 | 0,3 | 1 | 10 | 30 | 35 | 40 | 45 |
+|---|---|---|---|---|---|---|---|---|---|
+| Gain (dB) | −124,8 | −76,6 | −6,0 | 0,0 | 0,0 | −0,5 | −6,0 | −31,7 | −81,5 |
+
+Antara 1 dan 10 Hz sinyal tidak berubah (0 dB). Pada tepi pita, 0,3 dan 35 Hz, amplitudo menjadi setengahnya (−6 dB), dan di luar tepi redaman naik sangat cepat. Frekuensi 50 Hz tidak dicantumkan karena tepat berada di batas Nyquist untuk laju 100 Hz.
+
+**Cara membaca gambar (F2).** Sumbu keduanya logaritmik. Garis biru (hasil filter) dan abu-abu (mentah) berhimpit di rentang 0,5 sampai 30 Hz, artinya isi informasi tidak disentuh. Di kanan garis putus-putus 35 Hz garis biru jatuh tajam, sedangkan garis abu-abu mendatar. Datarnya garis abu-abu itu adalah lantai derau, yaitu bagian sinyal yang memang tidak membawa informasi tahap tidur. Sumbu y dipotong pada 10⁻³ agar pita lolos tetap terbaca, karena redaman filter jauh melampaui batas itu.
+
+**EMG tidak disaring.** Alasannya sama dengan yang dicatat di Bagian C: nilai EMG di SC adalah *envelope* 1 Hz yang informasinya terletak pada level, sehingga *high-pass* justru akan membuangnya.
+
+### Sel G1 sampai G3. Penanganan EMG (keputusan K4)
+
+**Analogi.** Sepuluh dapur memakai timbangan dengan titik nol yang berbeda: sebagian menunjukkan −1 gram saat kosong, sebagian lagi 17 gram. Angka mentahnya tidak bisa dibandingkan, dan menerapkan "logaritma berat" pada timbangan yang menunjukkan angka negatif pasti gagal.
+
+**Masalah yang terukur (G1).** Dari 153 rekaman:
+
+- 4,2% nilai EMG di dalam jendela bernilai negatif, tersebar pada 119 rekaman. Sebuah *envelope* seharusnya tidak pernah negatif, sehingga ini berasal dari *offset* kalibrasi perangkat.
+- Median per rekaman berkisar dari −0,99 sampai 17,79, dan IQR per rekaman dari 0,07 sampai 5,15. Skala antar-rekaman berbeda hingga puluhan kali.
+
+Dua fakta itu menutup dua jalan: nilai mentah tidak dapat dipakai langsung (skala berbeda), dan logaritma langsung tidak dapat dipakai (ada nilai negatif).
+
+**Empat kandidat (G2).** Kolom *values lost* adalah persentase nilai yang rusak atau terbuang oleh transformasi. *Skewness* mengukur kemiringan distribusi (0 berarti simetris). AUC Wake vs REM menunjukkan seberapa baik rerata EMG per epoch memisahkan kedua kelas itu (0,5 berarti tebakan, 1,0 berarti sempurna).
+
+| Kandidat | Nilai terbuang | Skewness | AUC Wake vs REM |
+|---|---|---|---|
+| Mentah | 0,000% | 3,281 | 0,842 |
+| Logaritma (batas bawah 10⁻³) | 4,274% | −2,921 | 0,817 |
+| *Robust* (median dan IQR) | 0,357% | −2,421 | 0,838 |
+| ***Robust* + arcsinh** | **0,357%** | **−0,874** | **0,850** |
+
+**Cara membaca.**
+
+- Logaritma membuang 4,3% nilai (semua yang ≤ 10⁻³, termasuk nilai negatif) dan menghasilkan AUC terendah. Kandidat ini gugur.
+- *Robust scaling* saja mempertahankan informasi tetapi distribusinya masih miring (−2,4) karena rekaman dengan IQR sangat kecil menghasilkan nilai terstandardisasi yang ekstrem.
+- Menambahkan `arcsinh` setelah *robust scaling* menurunkan kemiringan menjadi −0,87 dan memberi AUC tertinggi.
+
+**Apa itu arcsinh.** Fungsi `arcsinh(z) = ln(z + √(z² + 1))` berperilaku hampir linear di sekitar nol dan hampir logaritmik untuk nilai besar, tetapi tetap terdefinisi untuk nilai negatif. Singkatnya, ia adalah "logaritma yang aman bagi bilangan negatif". Ia menekan ekor panjang tanpa membuang apa pun.
+
+**Keputusan K4.** EMG di SC diproses dengan urutan: *robust scaling* per rekaman (median dan IQR), pemotongan ±20, lalu `arcsinh`. Perlu dicatat dengan jujur bahwa selisih AUC dengan data mentah hanya 0,008. Alasan utama memilih `arcsinh` adalah distribusi yang lebih simetris dan terbatas (sekitar ±3,7) bagi jaringan saraf, bukan lompatan kemampuan pemisah.
+
+**Cara membaca gambar (G3).** Titik adalah median dan batang adalah rentang antar-kuartil EMG per tahap. Nilainya turun berurutan dari Wake ke REM. Itulah *atonia* REM yang dijelaskan pada D3, kini terbukti pada 153 rekaman dan bukan hanya satu contoh, sehingga cabang EMG memang layak dipertahankan.
+
+### Sel H1 sampai H3. Pemotongan epoch dan normalisasi per rekaman
+
+**Analogi.** Menakar porsi seragam sebelum memasak. Setiap bahan, dari rekaman mana pun, harus diukur dengan takaran yang sama agar model tidak belajar "siapa yang direkam" alih-alih "tahap apa".
+
+**Mengapa *robust scaling*.** *Z-score* memakai rerata dan simpangan baku, dua besaran yang mudah terdistorsi satu artefak besar. *Robust scaling* memakai median dan IQR (persentil 75 dikurangi persentil 25), sehingga artefak tidak merusak skala. Rumusnya `(x − median) / IQR`, dihitung terpisah **per rekaman dan per kanal**.
+
+**Aturan tambahan.**
+
+- Statistik dihitung **setelah** *trimming* dan penyaringan. Bila dihitung pada 24 jam penuh, statistiknya didominasi Wake siang hari. Filter harus mendahului normalisasi karena filter mengubah amplitudo.
+- Nilai di luar ±20 IQR dipotong (`CLIP = 20`). Rentang itu sangat longgar, setara sekitar ±27 simpangan baku pada data normal, sehingga hanya artefak ekstrem yang terkena.
+- Pemotongan memakai `np.clip`, dan persentase nilai yang terpotong dicatat sebagai bahan pemeriksaan mutu.
+
+**Fungsi `preprocess_record`.** Ini perangkaian seluruh langkah untuk satu rekaman: membaca sinyal, memotong ke jendela, menyaring EEG dan EOG, menormalisasi keempat kanal, menerapkan `arcsinh` pada EMG, lalu mengubah bentuk menjadi larik per epoch. Keluarannya:
+
+| Larik | Bentuk | Keterangan |
+|---|---|---|
+| `eeg` | (N, 2, 3.000) | Fpz-Cz dan Pz-Oz (dua kanal disimpan agar K2 dapat diuji sebagai ablasi) |
+| `eog` | (N, 3.000) | EOG horizontal |
+| `emg` | (N, 30) | Satu nilai per detik, tanpa *upsampling* |
+| `labels` | (N,) | 0 sampai 4, dan −1 untuk epoch yang diabaikan |
+| `epoch_idx` | (N,) | Nomor epoch asli dalam rekaman, dibutuhkan keputusan K3 |
+
+**Keluaran `SC4001E` (H1).** Bentuknya (841, 2, 3.000), (841, 3.000), dan (841, 30). IQR mentah EEG Fpz-Cz adalah 19,67 µV, Pz-Oz 12,61 µV, dan EOG 17,95 µV, tiga angka yang berbeda cukup jauh, dan itulah yang diseragamkan.
+
+**Pemeriksaan (H2).** Setelah normalisasi, median EEG dan EOG tepat 0 dan IQR tepat 1,000. IQR EMG 0,961 karena `arcsinh` sedikit memampatkan nilai, dan itu wajar. Nilai maksimum EEG hanya 8,4 dan 12,4, sedangkan EOG mencapai 20,0, tepat di batas pemotongan, yang berarti ada satu atau beberapa artefak yang terpotong.
+
+**Cara membaca gambar (H3).** Gambar ini sejajar dengan D3 tetapi memakai data yang sudah diolah. Pola yang sama tampak: gelombang lambat amplitudo besar pada N3, gerak mata pada EOG saat Wake dan REM, serta EMG paling rendah pada REM. Setiap baris berbagi skala sumbu y sendiri, karena skala EMG sengaja berbeda dari EEG dan EOG setelah `arcsinh`.
+
+### Sel I1 sampai I3. Pemeriksaan mutu seluruh 153 rekaman
+
+**Analogi.** Menimbang dan memeriksa setiap porsi sebelum dimasukkan ke kulkas. Satu bahan rusak yang lolos ke penyimpanan akan merusak setiap masakan yang memakainya.
+
+**Cara kerja.**
+
+- I1 menjalankan `preprocess_record` pada seluruh rekaman (±130 detik) dan hanya mencatat statistik per rekaman, tanpa menyimpan larik. Dengan begitu pemeriksaan selesai sebelum 3,55 GB ditulis ke disk.
+- I2 menerapkan tiga `assert` (semua nilai terhingga, jumlah epoch berlabel dan per kelas sama dengan hasil E3, panjang jendela sama dengan hasil E3) dan tiga tanda peringatan:
+  - `flag_clip`: lebih dari 1% sampel pada satu kanal terpotong.
+  - `flag_flat`: EEG hampir konstan pada lebih dari 5% epoch (indikasi elektroda lepas).
+  - `flag_emg`: IQR mentah EMG di bawah 0,1 (nyaris datar), atau rerata EMG REM tidak lebih rendah daripada Wake.
+
+**Hasil.** Seluruh nilai terhingga dan seluruh hitungan cocok. EEG dan EOG bersih: tidak ada rekaman dengan EEG datar, dan persentase pemotongan terbesar hanya 0,35% (Pz-Oz) serta 0,17% (EOG). Sebanyak 20 rekaman ditandai, **semuanya karena EMG**: 9 karena pemotongan dan 17 karena kualitas EMG (ada yang tumpang tindih). Temuan yang menarik, 11 dari 17 rekaman EMG bermasalah berasal dari subjek berusia 80 tahun ke atas, padahal kelompok itu hanya 32 dari 153 rekaman (±21%). Pada sebagian lansia, sinyal EMG submental memang lemah atau berubah.
+
+**Keputusan.** Tidak ada rekaman yang dibuang. Membuang subjek lansia mengubah populasi dan membuat hasil tidak sebanding dengan literatur. Sebagai gantinya, tanda-tanda itu disimpan di berkas manifes agar tahap ablasi dapat menguji sensitivitas, misalnya menghitung hasil dengan dan tanpa 17 rekaman tersebut.
+
+**Cara membaca gambar (I3).** Panel kiri memperlihatkan IQR mentah tiap rekaman. EEG dan EOG berbeda hingga 4,5 sampai 7,9 kali antar rekaman, sedangkan EMG hingga 73,5 kali. Itu pembenaran empiris untuk normalisasi per rekaman. Panel kanan memperlihatkan persentase sampel terpotong: hampir semua titik EEG dan EOG berada di nol, dan hanya EMG yang memiliki beberapa titik tinggi (maksimum 17,75% pada `SC4432E`).
+
+### Sel J1 dan J2. Penyimpanan *cache* dan verifikasi muat ulang
+
+**Analogi.** Porsi yang sudah ditakar dimasukkan ke kotak berlabel di kulkas. Memasak berikutnya tidak perlu mengulang mencuci dan memotong.
+
+**Keputusan format.**
+
+- **Satu berkas `.npz` per rekaman** di `data/processed/sc/`. Pembagian lipatan nanti berdasarkan subjek, sehingga memuat per rekaman memudahkan merakit lipatan tanpa memuat semuanya.
+- **Tanpa kompresi.** Sinyal biologis yang berderau tidak terkompresi baik, sedangkan penulisan dan pembacaan menjadi jauh lebih lambat.
+- **`float16` untuk EEG dan EOG**, `float32` untuk EMG. `float16` memangkas ukuran separuhnya. Nilai kita dibatasi ±20 sehingga presisinya memadai: galat maksimum terukur 0,0078 (terjadi pada nilai di sekitar 16 sampai 20, yaitu artefak), sedangkan nilai tipikal di sekitar 1 berselisih sekitar 0,0005.
+
+**Isi tiap berkas.**
+
+| Kunci | Tipe | Keterangan |
+|---|---|---|
+| `eeg`, `eog`, `emg` | float16, float16, float32 | Seperti pada tabel H |
+| `labels`, `epoch_idx` | int8, int32 | Label per epoch dan nomor epoch asli |
+| `subject`, `night`, `age` | int16, int8, int16 | Dibutuhkan untuk lipatan *subject-wise* (K3) dan stratifikasi usia |
+| `window` | int32 (2) | Awal dan akhir jendela *trimming* pada rekaman asli |
+| `norm` | float32 (4, 2) | Median dan IQR mentah untuk Fpz-Cz, Pz-Oz, EOG, EMG |
+
+**Hasil.** 153 berkas, total **3,55 GB**. Waktu penulisan ±157 detik.
+
+**Verifikasi (J2).** Seluruh berkas dibaca ulang (±13 detik) lalu diperiksa:
+
+1. Jumlah berkas 153 dan seluruh bentuk serta tipe data sesuai tabel di atas.
+2. Tidak ada nilai NaN atau tak hingga.
+3. Label berada pada −1 sampai 4, dan nomor epoch berurutan tanpa celah.
+4. Subjek dan malam di tiap berkas sama dengan inventaris.
+5. Jumlah per kelas seluruh berkas: Wake 65.941, N1 21.522, N2 69.132, N3 13.039, REM 25.835, total **195.469**, sama persis dengan hasil E3.
+6. Perbandingan terhadap perhitungan baru untuk `SC4001E`: galat `float16` di bawah 0,01.
+
+Berkas `results/tables/02_cache_manifest.csv` menyimpan ringkasan per rekaman (jumlah epoch, jumlah per kelas, statistik mutu, tanda peringatan, ukuran berkas). Berkas ini kecil dan ikut di-*commit*, sehingga teman satu kelompok dapat membandingkan hasil *cache* mereka dengan milik pengembang tanpa mengirim data.
+
+**Waktu total.** Satu kali jalan Bagian A sampai J membutuhkan sekitar 5,5 menit pada mesin pengembang (I1 ±130 detik dan J1 ±157 detik adalah bagian terlama).
+
+---
+
 ## Bagian 3. Istilah yang muncul
 
 | Istilah | Arti dalam notebook ini |
@@ -170,12 +342,29 @@ Angka 414.961 adalah "SC-78 sebelum *trimming*" pada dokumen Ref-1, dan 1.463 sa
 | `np.diff` | Selisih elemen bersebelahan; dipakai mencari titik tempat label berubah |
 | `np.bincount` | Menghitung kemunculan tiap bilangan bulat 0, 1, 2, ... |
 | `sharey="row"` | Subplot satu baris berbagi skala sumbu y |
+| Jendela tidur | Rentang epoch dari 30 menit sebelum tidur pertama sampai 30 menit sesudah tidur terakhir |
+| Butterworth | Rancangan filter dengan respons datar di pita lolos |
+| Fase nol (`sosfiltfilt`) | Filter maju lalu mundur sehingga gelombang tidak bergeser waktunya |
+| Welch (PSD) | Cara memperkirakan sebaran daya sinyal menurut frekuensi |
+| IQR | Selisih persentil 75 dan persentil 25; ukuran sebaran yang tahan terhadap nilai ekstrem |
+| *Robust scaling* | Pengurangan median lalu pembagian IQR |
+| *Clipping* | Memotong nilai di luar batas (di sini ±20) pada batas itu |
+| `arcsinh` | Fungsi mirip logaritma yang tetap terdefinisi untuk nilai negatif |
+| *Skewness* | Ukuran kemiringan distribusi; 0 berarti simetris |
+| AUC | Kemampuan memisahkan dua kelas; 0,5 tebakan, 1,0 sempurna |
+| `float16` | Bilangan pecahan 16 bit; separuh ukuran `float32` dengan presisi sekitar tiga digit |
+| `.npz` | Berkas NumPy yang menampung beberapa larik bernama |
+| Manifes | Tabel ringkasan per berkas hasil *cache* untuk pemeriksaan silang |
 
 ## Bagian 4. Percobaan kecil
 
 1. Ganti `REC = "SC4001E"` dengan `"SC4762E"`, lalu jalankan ulang D1 sampai D3. Rekaman ini memiliki rentetan hampir 50 menit tanpa label; lihat bagaimana area abu-abu muncul di hypnogram.
 2. Ubah `picks` di D3 menjadi `{"N1": 1, "N2": 2}` untuk melihat mengapa N1 sulit dibedakan dari Wake secara visual.
 3. Hapus `+ 1` pada `np.bincount(labels + 1, ...)` dan baca pesan galatnya.
+4. Ubah `TRIM_EPOCHS` menjadi 20, jalankan ulang E3, dan baca `assert` mana yang gagal serta berapa jumlah Wake yang baru.
+5. Ubah batas atas `BAND` dari 35 menjadi 20 Hz, jalankan F2, dan lihat bagian spektrum mana yang ikut terpotong.
+6. Pada G2, tambahkan kandidat *z-score* biasa (`(x - x.mean()) / x.std()`) dan bandingkan skewness serta AUC-nya.
+7. Ganti `REC` menjadi `"SC4611E"` (EMG hampir datar) lalu jalankan H1 sampai H3 dan perhatikan baris EMG.
 
 ## Bagian 5. Pertanyaan untuk menguji pemahaman
 
@@ -184,3 +373,9 @@ Angka 414.961 adalah "SC-78 sebelum *trimming*" pada dokumen Ref-1, dan 1.463 sa
 3. Apa akibatnya bila epoch tak berlabel dibuang dari larik, bukan diberi −1?
 4. Mengapa angka 414.961 di D4 belum mencerminkan *trimming*?
 5. Pada D3, mengapa EMG saat REM jauh lebih rendah, dan mengapa itu berguna bagi model?
+6. Mengapa N1, N2, N3, dan REM tidak berubah jumlahnya setelah *trimming*, sedangkan Wake turun drastis?
+7. Mengapa filter dijalankan maju dan mundur, dan apa akibatnya bila hanya maju?
+8. Mengapa logaritma langsung tidak dapat dipakai pada EMG, dan apa yang diberikan `arcsinh` sebagai gantinya?
+9. Mengapa statistik normalisasi dihitung setelah *trimming* dan penyaringan, bukan sebelumnya?
+10. Mengapa 20 rekaman yang ditandai pada I2 tidak dibuang, dan untuk apa tandanya disimpan?
+11. Mengapa `epoch_idx`, `subject`, dan `night` ikut disimpan di tiap berkas *cache*?
