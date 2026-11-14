@@ -63,3 +63,25 @@ Selisih ±7 poin (epoch-wise 81,0 vs subject-wise 73,7) saat ini berasal dari GB
 **Dampak pada Ref-1.** Kalimat tentang transformasi `log(clip(x, ε))` pada EMG perlu diganti dengan deskripsi di atas. Rekomendasi pada `CATATAN_PERUBAHAN_REF1.md` nomor 6 dan daftar periksa pada `ANALISIS_PROJECT_SLEEP_STAGING.md` bagian 7 yang masih menyebut transformasi logaritma digantikan oleh keputusan ini.
 
 **Catatan mutu.** Pemeriksaan pada Bagian I menandai 17 rekaman dengan EMG hampir datar atau tidak membedakan REM dari Wake (11 di antaranya subjek berusia 80 tahun ke atas). Rekaman tersebut tidak dibuang; tandanya disimpan pada `results/tables/02_cache_manifest.csv` untuk uji sensitivitas pada tahap ablasi.
+
+## K5. Rancangan *baseline* klasik (Fase 2)
+
+**Status:** Diputuskan (11 November 2026), diterapkan pada `notebooks/03_baseline.ipynb`.
+
+**Keputusan.**
+
+1. **Fitur:** 33 fitur per *epoch* yang dihitung dari *cache* Fase 1: 12 fitur untuk tiap kanal EEG (daya total, daya relatif enam pita, rasio theta/alfa dan delta/beta, parameter Hjorth, kurtosis), 5 fitur EOG, dan 4 fitur EMG. Fitur dua *epoch* sebelum dan sesudah ditempelkan (165 kolom); tetangga dari rekaman lain diisi NaN.
+2. **Model:** `HistGradientBoostingClassifier` (laju belajar 0,1, maksimum 31 daun, `max_bins = 63`, bobot kelas seimbang), dengan penghentian dini pada *log-loss* subjek validasi (berhenti setelah 20 iterasi tanpa perbaikan, maksimum 500).
+3. **Validasi:** SC-20 memakai satu subjek per lipatan (20 lipatan) dan SC-78 memakai 10 lipatan `GroupKFold`. Di setiap lipatan, sekitar 10% subjek latih disisihkan sebagai validasi. *Epoch* berlabel −1 tidak dilatih maupun dinilai, dan metrik dihitung dari prediksi gabungan seluruh lipatan.
+4. **Cakupan analisis:** ablasi modalitas dan pemeriksaan kebocoran dijalankan pada SC-20; pentingnya fitur dan skor per subjek pada SC-78.
+
+**Alasan.**
+
+1. Fitur dipilih dari ciri yang dipakai dalam penilaian tahap tidur (alfa, theta, *spindle*, gelombang lambat, gerakan mata, tonus otot) dan dihitung dengan rumus pemrosesan sinyal baku. Daya relatif dipakai karena sinyal sudah dinormalisasi per rekaman sehingga daya mutlak antar-subjek kurang bermakna.
+2. Skema lipatan mengikuti protokol yang lazim di literatur (SC-20 satu subjek per lipatan, SC-78 sepuluh lipatan) agar sebanding dan selaras dengan rencana Fase 3 dan 4.
+3. Penghentian dini memakai *log-loss*, bukan *Macro-F1*: penghitungan *Macro-F1* di setiap iterasi mengharuskan prediksi ulang seluruh set validasi, sehingga satu konfigurasi SC-20 memerlukan lebih dari 10 menit. Untuk model *deep learning* (Fase 3), penghentian dini tetap direncanakan memakai *Macro-F1* validasi.
+4. `max_bins = 63` memangkas waktu pelatihan sekitar separuh dengan *Macro-F1* yang sama atau sedikit lebih baik pada uji satu lipatan (SC-20 79,6 dan 79,6; SC-78 74,0 dibanding 73,7).
+
+**Catatan.** Selain penghentian dini, tidak ada penyetelan hiperparameter. Pilihan ini disengaja agar *baseline* tetap sederhana dan tidak disetel berlebihan.
+
+**Hasil.** SC-20: MF1 79,2, Kappa 0,784, F1-N1 49,3. SC-78: MF1 76,5, Kappa 0,739, F1-N1 51,0. Angka ini menjadi batas bawah Fase 3.

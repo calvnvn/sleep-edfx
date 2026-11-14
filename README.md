@@ -8,8 +8,8 @@ Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) unt
 |---|---|---|
 | Fase 0. Lingkungan dan struktur proyek | Selesai | Struktur folder, dependensi, panduan setup |
 | EDA (`notebooks/01_eda.ipynb`) | Selesai | Profil dataset, rata-rata waktu per tahap, visualisasi kondisi data |
-| **Fase 1. Pre-processing** (`notebooks/02_preprocessing.ipynb`) | **Sedang dikerjakan** | Bagian A sampai D selesai (inventaris, anatomi rekaman, label per epoch). Bagian E sampai J berikutnya |
-| Fase 2. Baseline klasik | Belum | Hasil awal sudah ada di `results/ablation/` |
+| Fase 1. Pre-processing (`notebooks/02_preprocessing.ipynb`) | Selesai | Bagian A sampai J: label per epoch, *trimming*, penyaringan, penanganan EMG, normalisasi, pemeriksaan mutu, dan cache 153 rekaman di `data/processed/sc/` |
+| Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`) | Selesai | 33 fitur buatan tangan + *gradient boosting*, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739 |
 | Fase 3. Model deep learning pada SC-20 | Belum | |
 | Fase 4. Benchmark SC-78 (*subject-wise* cross-validation) | Belum | |
 | Fase 5. Ablasi | Belum | |
@@ -81,7 +81,7 @@ python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl
 python scripts/edfx_eda.py                 # uji akhir: hasilnya harus identik dengan yang ada di repositori
 ```
 
-Lalu buka `notebooks/01_eda.ipynb` dan `notebooks/02_preprocessing.ipynb` dengan kernel `.venv`.
+Lalu buka `notebooks/01_eda.ipynb`, `notebooks/02_preprocessing.ipynb`, dan `notebooks/03_baseline.ipynb` secara berurutan dengan kernel `.venv`.
 
 ---
 
@@ -92,7 +92,7 @@ Lalu buka `notebooks/01_eda.ipynb` dan `notebooks/02_preprocessing.ipynb` dengan
 | Sistem operasi | Windows 10/11, macOS, atau Linux | Dikembangkan dan diuji di Windows 11 |
 | Python | **3.11** | Diuji pada 3.11.9. Versi lain belum diuji |
 | Git | Versi terbaru | |
-| Ruang disk | ±10 GB bebas sekarang, ±20 GB bila seluruh cache Fase 1 disimpan | Data mentah 8,1 GB. Cache Fase 1 diperkirakan 3,5 sampai 7 GB (float16 atau float32) |
+| Ruang disk | ±15 GB bebas | Data mentah 8,1 GB, cache Fase 1 3,55 GB (`float16`) |
 | RAM | 16 GB disarankan | Fase 1 memproses satu rekaman sekali waktu. Pelatihan nanti memuat cache ke memori |
 | GPU | **Tidak wajib** sampai Fase 3 | EDA dan Fase 1 berjalan di CPU. Pelatihan dikembangkan pada NVIDIA RTX 3050 6 GB |
 | Internet | Untuk mengunduh paket Python dan dataset | |
@@ -269,7 +269,8 @@ Jalankan notebook **berurutan**, dengan kernel `.venv`. Notebook mencari root re
 |---|---|---|---|
 | `scripts/edfx_eda.py` | Dataset lengkap | `results/eda/eda_summary.txt`, `eda_records.json` | Ringkasan per rekaman. Hanya membaca header dan hypnogram, tidak membaca sinyal |
 | `notebooks/01_eda.ipynb` | `results/eda/eda_records.json` (sudah di repositori) | 4 grafik di `results/figures/`, 1 tabel di `results/tables/` | Pada akhir sel 3 tercetak `All checks passed` |
-| `notebooks/02_preprocessing.ipynb` | Dataset lengkap | Grafik `02_*` di `results/figures/` | Sel D4 mencetak `153 recordings, 416,424 epochs; all counts match the EDA` |
+| `notebooks/02_preprocessing.ipynb` | Dataset lengkap | Grafik `02_*` di `results/figures/`, cache 153 berkas di `data/processed/sc/`, manifes `results/tables/02_cache_manifest.csv` | Sel terakhir (J2) mencetak `153 files, 3.55 GB, ...; 195,469 labelled epochs; max float16 error 0.0078` |
+| `notebooks/03_baseline.ipynb` | Cache notebook 02 | Grafik `03_*` di `results/figures/`, tabel `03_baseline_*.csv` di `results/tables/`, fitur dan prediksi di `data/processed/` | Sel terakhir mencetak `Baseline to beat in phase 3: SC-20 MF1 79.2 / kappa 0.784; SC-78 MF1 76.5 / kappa 0.739` |
 
 Estimasi waktu, diukur pada klon bersih di Windows 11 dengan jalur CPU:
 
@@ -280,11 +281,12 @@ Estimasi waktu, diukur pada klon bersih di Windows 11 dengan jalur CPU:
 | Memasang PyTorch CPU | ±3,5 menit |
 | `scripts/edfx_eda.py` | kurang dari 2 detik |
 | `01_eda.ipynb` (Run All) | ±20 detik |
-| `02_preprocessing.ipynb` (Run All) | ±15 detik |
+| `02_preprocessing.ipynb` (Run All) | ±6 menit (pemeriksaan mutu I1 dan penulisan cache J1 masing-masing ±2,5 menit) |
+| `03_baseline.ipynb` (Run All) | ±25 menit (ekstraksi fitur ±2 menit, SC-78 10 lipatan ±11 menit) |
 | Mengunduh dataset (8,1 GB) | bergantung koneksi internet |
 | Verifikasi `sha256sum` | ±35 detik |
 
-Waktu pemasangan paket bergantung pada kecepatan internet. Bagian E sampai J notebook 02 akan memproses seluruh 153 rekaman dan lebih lama; estimasinya diperbarui saat bagian itu selesai.
+Waktu pemasangan paket bergantung pada kecepatan internet. Notebook 02 menulis cache sekitar 3,55 GB ke `data/processed/sc/`; folder ini diabaikan git dan dapat dibuat ulang kapan saja.
 
 > Menjalankan ulang notebook akan membuat git mencatat `01_eda.ipynb`, `02_preprocessing.ipynb`, dan grafik di `results/figures/` sebagai *modified*, karena gambar hasil render berbeda beberapa piksel antar komputer. Itu normal. Jangan commit perubahan tersebut kecuali Anda memang mengubah analisisnya; untuk membatalkannya, jalankan `git restore notebooks results/figures`.
 
@@ -299,18 +301,19 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 ├── configs/                  # konfigurasi percobaan (YAML), satu berkas per eksperimen (belum dipakai)
 ├── data/
 │   ├── raw/sleep-edfx/       # dataset PhysioNet, hanya dibaca (tidak di-commit)
-│   └── processed/            # cache hasil pre-processing (tidak di-commit)
+│   └── processed/            # cache pre-processing (sc/), fitur dan prediksi baseline (tidak di-commit)
 ├── docs/
 │   ├── analisis/             # analisis proyek secara menyeluruh
-│   ├── belajar/              # bahan belajar per notebook (01 dan 02)
+│   ├── belajar/              # bahan belajar per notebook (01, 02, 03)
 │   └── catatan/              # catatan perubahan Ref-1 dan keputusan desain
 ├── notebooks/
 │   ├── 01_eda.ipynb          # EDA
-│   └── 02_preprocessing.ipynb  # Fase 1 (sedang dikerjakan)
+│   ├── 02_preprocessing.ipynb  # Fase 1: pre-processing dan cache
+│   └── 03_baseline.ipynb     # Fase 2: baseline klasik
 ├── results/
 │   ├── eda/                  # ringkasan EDA (eda_records.json, eda_summary.txt)
-│   ├── ablation/             # hasil baseline klasik awal
-│   ├── figures/              # grafik (awalan 01_ dan 02_ mengikuti notebook)
+│   ├── ablation/             # hasil baseline awal sebelum pre-processing (riwayat)
+│   ├── figures/              # grafik (awalan 01_, 02_, 03_ mengikuti notebook)
 │   ├── tables/               # tabel hasil
 │   ├── logs/                 # log pelatihan (belum dipakai)
 │   └── checkpoints/          # bobot model (tidak di-commit)
@@ -333,8 +336,8 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 
 - [x] Fase 0: lingkungan dan struktur proyek
 - [x] EDA: profil dataset, rata-rata waktu per tahap, visualisasi kondisi data
-- [ ] **Fase 1: pipeline data (sedang dikerjakan)**
-- [ ] Fase 2: baseline klasik
+- [x] Fase 1: pipeline data (pre-processing dan cache)
+- [x] Fase 2: baseline klasik
 - [ ] Fase 3: model deep learning pada SC-20
 - [ ] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
 - [ ] Fase 5: ablasi
@@ -348,14 +351,14 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 | B | Inventaris: memasangkan 153 PSG dengan hypnogram | Selesai |
 | C | Anatomi satu rekaman: header, kanal, rentang nilai | Selesai |
 | D | Label per epoch (pemetaan AASM, pemotongan ke panjang sinyal, label −1) dan uji silang dengan EDA | Selesai |
-| E | *Trimming* jendela tidur ±30 menit. Uji unit: 195.469 epoch berlabel | Berikutnya |
-| F | Penyaringan *band-pass* 0,3 sampai 35 Hz (EEG dan EOG) | Belum |
-| G | Penanganan EMG (lihat keputusan K4) | Belum |
-| H | Pemotongan epoch dan normalisasi per rekaman (*Robust Scaling*, *clip* ±20) | Belum |
-| I | Pemeriksaan mutu seluruh 153 rekaman | Belum |
-| J | Penyimpanan cache per rekaman dan verifikasi muat ulang | Belum |
+| E | *Trimming* jendela tidur ±30 menit. Uji unit: 195.469 epoch berlabel | Selesai |
+| F | Penyaringan *band-pass* 0,3 sampai 35 Hz (EEG dan EOG), Butterworth orde 4 fase nol | Selesai |
+| G | Penanganan EMG: *robust scaling*, *clip* ±20, lalu `arcsinh` (keputusan K4) | Selesai |
+| H | Pemotongan epoch dan normalisasi per rekaman (*Robust Scaling*, *clip* ±20) | Selesai |
+| I | Pemeriksaan mutu seluruh 153 rekaman (EEG dan EOG bersih; 17 rekaman EMG ditandai) | Selesai |
+| J | Penyimpanan cache per rekaman dan verifikasi muat ulang | Selesai |
 
-Keluaran akhir Fase 1 per rekaman: EEG 2 kanal (N × 2 × 3.000), EOG (N × 3.000), EMG (N × 30), label (0 sampai 4, dan −1 untuk epoch yang diabaikan), serta metadata (ID subjek, malam, nomor epoch).
+Keluaran akhir Fase 1 per rekaman: EEG 2 kanal (N × 2 × 3.000), EOG (N × 3.000), EMG (N × 30), label (0 sampai 4, dan −1 untuk epoch yang diabaikan), serta metadata (ID subjek, malam, usia, nomor epoch, jendela, statistik normalisasi). Seluruhnya tersimpan di `data/processed/sc/` (153 berkas, 3,55 GB), dengan ringkasan per rekaman di `results/tables/02_cache_manifest.csv`.
 
 ---
 
@@ -382,7 +385,23 @@ Distribusi kelas SC-78 sebelum dan sesudah *trimming* ±30 menit:
 
 Proporsi N3 turun seiring usia: 13,5% pada usia 25 sampai 39 tahun menjadi 2,8% pada usia 80 tahun ke atas.
 
-### Baseline klasik awal (GBDT dengan fitur buatan tangan, validasi *subject-wise*)
+### Baseline klasik Fase 2 (`notebooks/03_baseline.ipynb`)
+
+Dihitung dari cache Fase 1 dengan 33 fitur per epoch, konteks ±2 epoch, dan *gradient boosting* berbobot kelas. Validasi per subjek dengan subjek validasi terpisah untuk penghentian dini.
+
+| Data | ACC | Macro-F1 | κ | F1-N1 |
+|---|---|---|---|---|
+| SC-20 (20 lipatan, satu subjek per lipatan) | 84,1 | 79,2 | 0,784 | 49,3 |
+| SC-78 (10 lipatan) | 80,7 | 76,5 | 0,739 | 51,0 |
+
+- **Ablasi modalitas (SC-20):** Macro-F1 naik dari 68,4 (Fpz-Cz saja) menjadi 72,5 (+ Pz-Oz), 75,1 (+ EOG), 76,6 (+ EMG), dan 79,2 (+ konteks).
+- **Kebocoran data (SC-20):** pembagian acak per epoch menaikkan Macro-F1 sekitar 7 poin secara palsu.
+- **Usia (SC-78):** Macro-F1 per subjek turun dari 79,0 (usia 25 sampai 39) menjadi 68,7 (80 tahun ke atas).
+- N1 tetap kelas tersulit: hanya 55 sampai 60% epoch N1 tertebak benar.
+
+Angka ini menjadi batas bawah model *deep learning* pada Fase 3. Penjelasan lengkap ada di `docs/belajar/03_baseline_penjelasan.md`.
+
+### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi *subject-wise*)
 
 | Konfigurasi | Macro-F1 (%) |
 |---|---|
@@ -395,7 +414,7 @@ Proporsi N3 turun seiring usia: 13,5% pada usia 25 sampai 39 tahun menjadi 2,8% 
 
 Bukti kebocoran data: dengan konfigurasi yang sama, pembagian acak per epoch menghasilkan Macro-F1 81,0%, sedangkan pembagian per subjek menghasilkan 73,7%. Selisih ±7 poin itulah yang membuat validasi wajib berbasis subjek.
 
-Berkas hasil ada di `results/ablation/`. Skrip penghasilnya sudah dihapus dari pohon kerja karena tahapnya belum dimulai (tersedia di riwayat git pada commit `6dfc9b9`). Eksperimen akan diulang pada model akhir.
+Berkas hasil ada di `results/ablation/`. Skrip penghasilnya sudah dihapus dari pohon kerja (tersedia di riwayat git pada commit `6dfc9b9`). Hasil ini digantikan oleh baseline Fase 2 di atas, yang memakai data hasil pre-processing.
 
 ---
 
@@ -408,7 +427,8 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | K1 | Epoch *Unscored* dan *Movement time* tetap berada di urutan dengan label −1, dikecualikan dari *loss* dan metrik | Diputuskan |
 | K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Ditunda ke pemodelan |
 | K3 | Eksperimen kebocoran data diulang pada model akhir | Ditunda ke pemodelan |
-| K4 | Transformasi EMG (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Terbuka, diputuskan di Bagian G |
+| K4 | Transformasi EMG: *robust scaling* per rekaman, *clip* ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Diputuskan |
+| K5 | Baseline Fase 2: 33 fitur + konteks ±2, *gradient boosting* berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi | Diputuskan |
 
 ---
 
@@ -418,7 +438,9 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 |---|---|
 | [docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md](docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md) | Analisis proyek secara menyeluruh |
 | [docs/belajar/01_eda_penjelasan.md](docs/belajar/01_eda_penjelasan.md) | Penjelasan notebook EDA sel demi sel |
-| [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md) | Penjelasan notebook pre-processing (Bagian A sampai D) |
+| [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md) | Penjelasan notebook pre-processing (Bagian A sampai J) |
+| [docs/belajar/03_baseline_penjelasan.md](docs/belajar/03_baseline_penjelasan.md) | Penjelasan notebook baseline klasik (Fase 2) |
+| [docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md](docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md) | Bahan presentasi progres pre-processing dan usulan revisi dokumen kerangka penelitian |
 | [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md) | Keputusan desain dan alasannya |
 | [docs/catatan/CATATAN_PERUBAHAN_REF1.md](docs/catatan/CATATAN_PERUBAHAN_REF1.md) | Daftar perubahan untuk dokumen kerangka penelitian |
 
