@@ -93,11 +93,21 @@ Fase 2 memiliki tiga fungsi:
 | Daya gelombang lambat relatif (Fpz-Cz) | Tertinggi saat N3 | Gelombang lambat khas tidur dalam |
 | Daya alfa relatif (Pz-Oz) | Tertinggi saat *Wake* | Ritme alfa saat terjaga, terkuat di kanal oksipital |
 | *Hjorth mobility* (Fpz-Cz) | Terendah saat N3 | Frekuensi rata-rata turun saat gelombang lambat |
-| Daya sigma relatif (Fpz-Cz) | **Tidak** tertinggi saat N2 | Ciri *spindle* tidak menonjol pada fitur ini |
+| Daya sigma relatif (Fpz-Cz) | **Tidak** tertinggi saat N2 | N1 tertinggi (−3,76), N2 −3,91, batangnya tumpang tindih; N3 paling rendah (−5,19). Lihat catatan sigma di bawah |
 | Amplitudo EOG | Tertinggi saat *Wake* dan REM | Kedipan dan gerakan mata cepat |
 | Tingkat EMG | Turun berurutan dari *Wake* ke REM | *Atonia* REM |
 
-**Kesimpulan.** Lima dari enam fitur berperilaku sesuai harapan. Keterbatasan fitur sigma adalah salah satu alasan model yang belajar polanya sendiri (Fase 3) berpotensi lebih baik.
+**Catatan tentang sigma.**
+
+- **Apa itu sigma.** Pita 12 sampai 15 Hz tempat *sleep spindle* muncul, yaitu ledakan gelombang singkat yang khas tahap N2. Karena itu daya sigma diharapkan paling tinggi saat N2.
+- **Apa yang ditemukan.** Median sigma tertinggi justru saat N1 (−3,76, setara sekitar 2,3% dari total daya), sedangkan N2 −3,91 (sekitar 2,0%), dan batang keduanya tumpang tindih. Jadi fitur ini **tidak membedakan N2 dari N1**. Sigma tetap berguna untuk memisahkan N3, yang jauh lebih rendah (−5,19).
+- **Dugaan penyebab (belum diuji).**
+  1. *Spindle* hanya berlangsung sekitar 0,5 sampai 2 detik, kira-kira 3% dari satu *epoch*, sehingga ledakannya tenggelam saat daya dirata-ratakan selama 30 detik. Durasi *spindle* ini berasal dari pengetahuan umum dan belum diperiksa ke sumber tertentu.
+  2. Sigma yang dipakai adalah daya **relatif**, yaitu dibagi daya total. Saat N3 daya total didominasi gelombang lambat yang besar sehingga bagian sigma tampak kecil, sedangkan saat N1 gelombang lambat belum banyak sehingga bagian sigma tampak lebih besar. Sebagian selisih bisa berasal dari penyebut, bukan dari sigma itu sendiri.
+  3. Batas pita 12–15 Hz adalah pilihan kita; sebagian penulis memakai 11–16 Hz.
+- **Cara memastikan.** Ubah batas pita menjadi 11–16 Hz (percobaan kecil nomor 3), hitung daya sigma mutlak, atau gambar satu *epoch* N2 untuk melihat apakah *spindle* tampak sebagai ledakan singkat.
+
+**Kesimpulan.** Lima dari enam fitur berperilaku sesuai harapan, sehingga perhitungannya dapat dipercaya. Tidak ada fitur yang cukup sendirian karena banyak batang yang tumpang tindih, sehingga model menggabungkan banyak fitur. Bila dugaan tentang sigma benar, model yang belajar mendeteksi ledakan singkat sendiri (Fase 3) berpotensi lebih baik, tetapi itu juga baru dugaan.
 
 ### Sel E1. Fitur konteks
 
