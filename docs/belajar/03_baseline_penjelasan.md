@@ -39,6 +39,20 @@ Fase 2 memiliki tiga fungsi:
 | SC-20 (20 lipatan, satu subjek per lipatan) | 84,1 | 79,2 | 0,784 | 49,3 |
 | SC-78 (10 lipatan) | 80,7 | 76,5 | 0,739 | 51,0 |
 
+### 1.4 Konsep kunci
+
+Istilah berikut muncul berulang di Bagian F sampai H. Ringkasan yang sama ada pada sel markdown di awal notebook.
+
+**Pembagian per subjek.** Data disusun per *epoch* tetapi dibagi per **subjek**, karena satu subjek punya dua malam yang harus berada di sisi yang sama (latih atau uji). Dengan begitu model diuji pada orang yang belum pernah dilihatnya.
+
+**Fold (lipatan).** Satu putaran pelatihan dan pengujian dengan satu kelompok subjek sebagai penguji. Putaran diulang bergiliran sampai setiap kelompok pernah menjadi penguji satu kali. SC-20 memakai 20 *fold* (satu subjek per *fold*) dan SC-78 memakai 10 *fold* (sekitar 7 sampai 8 subjek per *fold*). Manfaatnya: hasil tidak bergantung pada satu pembagian yang kebetulan mudah atau sulit, dan seluruh data pernah diuji tanpa pernah diuji oleh model yang sudah melihatnya. Harganya: model dilatih sebanyak jumlah *fold*.
+
+**Data latih, validasi, dan uji.** Analogi: soal latihan, ujian tiruan, dan ujian sebenarnya. Data **validasi** (sekitar 10% subjek dari data latih) dipakai untuk memutuskan kapan pelatihan berhenti, sedangkan data **uji** hanya dinilai dan tidak boleh memengaruhi keputusan apa pun, agar nilai akhir jujur.
+
+**Penghentian dini (*early stopping*).** Makin banyak pohon ditambahkan, kesalahan pada data latih terus turun, tetapi kesalahan pada data validasi akhirnya berhenti turun lalu naik karena model mulai menghafal. Pelatihan dihentikan bila *log-loss* validasi tidak membaik selama 20 iterasi berturut-turut. Validasi diambil per subjek agar ujian tiruannya mirip kondisi nyata.
+
+**Metrik.** ACC adalah persentase tebakan benar dan bisa menyesatkan pada kelas tidak seimbang; MF1 adalah rata-rata F1 kelima kelas dengan bobot sama (metrik utama); Kappa adalah kesepakatan dengan dokter setelah dikoreksi kesepakatan kebetulan; F1-N1 adalah F1 khusus kelas tersulit.
+
 ---
 
 ## Bagian 2. Penjelasan sel per sel
@@ -191,6 +205,8 @@ Rentang per lipatan SC-20 lebih lebar karena satu lipatan hanya berisi satu subj
 **Analogi.** Ujian yang soalnya mirip sekali dengan soal latihan: nilainya tinggi, tetapi tidak mengukur kemampuan sebenarnya.
 
 **Cara kerja.** Model yang sama dilatih dengan pembagian **acak per *epoch***, sehingga *epoch* dari orang yang sama bisa berada di data latih dan uji sekaligus. Hasilnya dibandingkan dengan pembagian per subjek dari G1.
+
+**Mengapa pembagian acak menggelembungkan skor.** Ada dua jalur. Pertama, model bisa **mengenali orangnya** dari ciri sinyal khas orang itu. Kedua, **tetangga kembar**: bila *epoch* 500 masuk data uji dan *epoch* 499 serta 501 (hampir identik, label biasanya sama) masuk data latih, maka baris *epoch* 501 memuat fitur *epoch* 500 pada kolom `@-1` lengkap dengan labelnya. Jalur kedua adalah penalaran yang belum diuji terpisah.
 
 **Hasil.**
 
