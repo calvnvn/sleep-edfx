@@ -1,19 +1,19 @@
 # Automated Sleep Stage Classification using Multimodal Hybrid Deep Learning
 
-Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) untuk mengklasifikasikan lima tahap tidur AASM (Wake, N1, N2, N3, REM) dari sinyal polisomnografi pada dataset PhysioNet Sleep-EDF Expanded. Model yang diusulkan adalah Multi-Branch 1D-CNN (cabang EEG, EOG, EMG) yang digabung dengan 2-layer Bi-LSTM dan dilatih dengan Focal Loss. Evaluasi memakai *subject-wise* GroupKFold dengan metrik Macro-F1 dan Cohen's Kappa.
+Proyek akhir _Deep Learning_ (Informatika, Universitas Multimedia Nusantara) untuk mengklasifikasikan lima tahap tidur AASM (Wake, N1, N2, N3, REM) dari sinyal polisomnografi pada dataset PhysioNet Sleep-EDF Expanded. Model yang diusulkan adalah Multi-Branch 1D-CNN (cabang EEG, EOG, EMG) yang digabung dengan 2-layer Bi-LSTM dan dilatih dengan Focal Loss. Evaluasi memakai _subject-wise_ GroupKFold dengan metrik Macro-F1 dan Cohen's Kappa.
 
 ## Status saat ini
 
-| Tahap | Status | Keterangan |
-|---|---|---|
-| Fase 0. Lingkungan dan struktur proyek | Selesai | Struktur folder, dependensi, panduan setup |
-| EDA (`notebooks/01_eda.ipynb`) | Selesai | Profil dataset, rata-rata waktu per tahap, visualisasi kondisi data |
-| Fase 1. Pre-processing (`notebooks/02_preprocessing.ipynb`) | Selesai | Bagian A sampai J: label per epoch, *trimming*, penyaringan, penanganan EMG, normalisasi, pemeriksaan mutu, dan cache 153 rekaman di `data/processed/sc/` |
-| Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`) | Selesai | 33 fitur buatan tangan + *gradient boosting*, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739 |
-| Fase 3. Model deep learning pada SC-20 | Belum | |
-| Fase 4. Benchmark SC-78 (*subject-wise* cross-validation) | Belum | |
-| Fase 5. Ablasi | Belum | |
-| Fase 6. Uji eksternal ST dan laporan | Belum | |
+| Tahap                                                                   | Status  | Keterangan                                                                                                                                                |
+| ----------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fase 0. Lingkungan dan struktur proyek                                  | Selesai | Struktur folder, dependensi, panduan setup                                                                                                                |
+| EDA (`notebooks/01_eda.ipynb`)                                          | Selesai | Profil dataset, rata-rata waktu per tahap, visualisasi kondisi data                                                                                       |
+| Fase 1. Pre-processing (`notebooks/02_preprocessing.ipynb`)             | Selesai | Bagian A sampai J: label per epoch, _trimming_, penyaringan, penanganan EMG, normalisasi, pemeriksaan mutu, dan cache 153 rekaman di `data/processed/sc/` |
+| Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`)                 | Selesai | 33 fitur buatan tangan + _gradient boosting_, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739                                     |
+| Fase 3. Model deep learning pada SC-20 (`notebooks/04_cnn_model.ipynb`) | Selesai | Multi-Branch 1D-CNN + 2-layer Bi-LSTM + Focal Loss (20-fold LOSO). SC-20: ACC 82,7, MF1 78,6, κ 0,768, F1-N1 50,2                                         |
+| Fase 4. Benchmark SC-78 (_subject-wise_ cross-validation)               | Belum   |                                                                                                                                                           |
+| Fase 5. Ablasi                                                          | Belum   |                                                                                                                                                           |
+| Fase 6. Uji eksternal ST dan laporan                                    | Belum   |                                                                                                                                                           |
 
 Rincian per fase ada di bagian [Progress dan roadmap](#7-progress-dan-roadmap).
 
@@ -40,29 +40,29 @@ Rincian per fase ada di bagian [Progress dan roadmap](#7-progress-dan-roadmap).
 
 ### Alur pipeline
 
-```
+```text
 Berkas EDF mentah ──► EDA ──► Pre-processing ──► Cache .npz ──► Model ──► Evaluasi
 (data/raw, 8,1 GB)   (01)    (02, Fase 1)       (data/processed) CNN+Bi-LSTM  MF1, κ
                                                                              subject-wise
 ```
 
-| Komponen | Pilihan |
-|---|---|
-| Dataset | PhysioNet Sleep-EDF Expanded v1.0.0 |
-| Kelas | Wake, N1, N2, N3 (gabungan Stage 3 dan 4), REM (standar AASM) |
-| Satuan data | Epoch 30 detik. EEG dan EOG 100 Hz (3.000 sampel), EMG envelope 1 Hz (30 sampel) |
-| Arsitektur | Multi-Branch 1D-CNN (EEG, EOG, EMG) + 2-layer Bi-LSTM |
-| Loss | Focal Loss |
-| Validasi | *Subject-wise* GroupKFold (pengelompokan berdasarkan ID subjek, bukan nama berkas) |
-| Metrik | Macro-F1 (utama), Cohen's Kappa, F1 per kelas |
+| Komponen    | Pilihan                                                                            |
+| ----------- | ---------------------------------------------------------------------------------- |
+| Dataset     | PhysioNet Sleep-EDF Expanded v1.0.0                                                |
+| Kelas       | Wake, N1, N2, N3 (gabungan Stage 3 dan 4), REM (standar AASM)                      |
+| Satuan data | Epoch 30 detik. EEG dan EOG 100 Hz (3.000 sampel), EMG envelope 1 Hz (30 sampel)   |
+| Arsitektur  | Multi-Branch 1D-CNN (EEG, EOG, EMG) + 2-layer Bi-LSTM                              |
+| Loss        | Focal Loss                                                                         |
+| Validasi    | _Subject-wise_ GroupKFold (pengelompokan berdasarkan ID subjek, bukan nama berkas) |
+| Metrik      | Macro-F1 (utama), Cohen's Kappa, F1 per kelas                                      |
 
 ### Pembagian penggunaan data
 
-| Kelompok | Rekaman | Subjek | Peran |
-|---|---|---|---|
-| **SC** (Sleep-Cassette) | 153 | 78 | Data utama pelatihan dan evaluasi. Subjek sehat, direkam di rumah (ambulatori) |
-| SC-20 | 39 | 20 (subjek 00 sampai 19) | Subset untuk iterasi cepat dan prototipe |
-| **ST** (Sleep-Telemetry) | 44 | 22 | Hanya uji generalisasi *out-of-distribution* (ada pengaruh Temazepam dan perangkat EMG berbeda) |
+| Kelompok                 | Rekaman | Subjek                   | Peran                                                                                           |
+| ------------------------ | ------- | ------------------------ | ----------------------------------------------------------------------------------------------- |
+| **SC** (Sleep-Cassette)  | 153     | 78                       | Data utama pelatihan dan evaluasi. Subjek sehat, direkam di rumah (ambulatori)                  |
+| SC-20                    | 39      | 20 (subjek 00 sampai 19) | Subset untuk iterasi cepat dan prototipe                                                        |
+| **ST** (Sleep-Telemetry) | 44      | 22                       | Hanya uji generalisasi _out-of-distribution_ (ada pengaruh Temazepam dan perangkat EMG berbeda) |
 
 ---
 
@@ -76,34 +76,34 @@ cd <nama-folder-repositori>
 python -m venv .venv                       # Python 3.11
 # aktifkan venv (Windows PowerShell: .\.venv\Scripts\Activate.ps1 | macOS/Linux: source .venv/bin/activate)
 python -m pip install -r requirements.txt
-python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu   # atau cu126 untuk GPU NVIDIA
+python -m pip install torch==2.14.1 --index-url [https://download.pytorch.org/whl/cpu](https://download.pytorch.org/whl/cpu)   # atau cu126 untuk GPU NVIDIA
 # unduh dataset (8,1 GB) ke data/raw/sleep-edfx/  -> lihat bagian 4.7
 python scripts/edfx_eda.py                 # uji akhir: hasilnya harus identik dengan yang ada di repositori
 ```
 
-Lalu buka `notebooks/01_eda.ipynb`, `notebooks/02_preprocessing.ipynb`, dan `notebooks/03_baseline.ipynb` secara berurutan dengan kernel `.venv`.
+Lalu buka `notebooks/01_eda.ipynb`, `notebooks/02_preprocessing.ipynb`, `notebooks/03_baseline.ipynb`, dan `notebooks/04_cnn_model.ipynb` secara berurutan dengan kernel `.venv`.
 
 ---
 
 ## 3. Persyaratan
 
-| Kebutuhan | Minimum | Catatan |
-|---|---|---|
-| Sistem operasi | Windows 10/11, macOS, atau Linux | Dikembangkan dan diuji di Windows 11 |
-| Python | **3.11** | Diuji pada 3.11.9. Versi lain belum diuji |
-| Git | Versi terbaru | |
-| Ruang disk | ±15 GB bebas | Data mentah 8,1 GB, cache Fase 1 3,55 GB (`float16`) |
-| RAM | 16 GB disarankan | Fase 1 memproses satu rekaman sekali waktu. Pelatihan nanti memuat cache ke memori |
-| GPU | **Tidak wajib** sampai Fase 3 | EDA dan Fase 1 berjalan di CPU. Pelatihan dikembangkan pada NVIDIA RTX 3050 6 GB |
-| Internet | Untuk mengunduh paket Python dan dataset | |
+| Kebutuhan      | Minimum                                  | Catatan                                                                            |
+| -------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| Sistem operasi | Windows 10/11, macOS, atau Linux         | Dikembangkan dan diuji di Windows 11                                               |
+| Python         | **3.11**                                 | Diuji pada 3.11.9. Versi lain belum diuji                                          |
+| Git            | Versi terbaru                            |                                                                                    |
+| Ruang disk     | ±15 GB bebas                             | Data mentah 8,1 GB, cache Fase 1 3,55 GB (`float16`)                               |
+| RAM            | 16 GB disarankan                         | Fase 1 memproses satu rekaman sekali waktu. Pelatihan nanti memuat cache ke memori |
+| GPU            | **Tidak wajib** sampai Fase 3            | EDA dan Fase 1 berjalan di CPU. Pelatihan dikembangkan pada NVIDIA RTX 3050 6 GB   |
+| Internet       | Untuk mengunduh paket Python dan dataset |                                                                                    |
 
 Kebutuhan per tahap:
 
-| Tahap | Data mentah | Internet | GPU |
-|---|---|---|---|
-| Membaca hasil EDA (`01_eda.ipynb`) | Tidak (hasil sudah di repositori) | Tidak | Tidak |
-| Menjalankan ulang EDA dan Fase 1 | Ya | Tidak | Tidak |
-| Pelatihan model (Fase 3 ke atas) | Ya (atau cache Fase 1) | Tidak | Disarankan |
+| Tahap                              | Data mentah                       | Internet | GPU        |
+| ---------------------------------- | --------------------------------- | -------- | ---------- |
+| Membaca hasil EDA (`01_eda.ipynb`) | Tidak (hasil sudah di repositori) | Tidak    | Tidak      |
+| Menjalankan ulang EDA dan Fase 1   | Ya                                | Tidak    | Tidak      |
+| Pelatihan model (Fase 3 ke atas)   | Ya (atau cache Fase 1)            | Tidak    | Disarankan |
 
 ---
 
@@ -122,10 +122,10 @@ Ganti `<URL-REPOSITORI>` dengan alamat repositori GitHub yang dibagikan kepada A
 
 ### 4.2 Memeriksa Python
 
-| Sistem | Perintah | Hasil yang diharapkan |
-|---|---|---|
-| Windows | `py -3.11 --version` | `Python 3.11.x` |
-| macOS / Linux | `python3.11 --version` | `Python 3.11.x` |
+| Sistem        | Perintah               | Hasil yang diharapkan |
+| ------------- | ---------------------- | --------------------- |
+| Windows       | `py -3.11 --version`   | `Python 3.11.x`       |
+| macOS / Linux | `python3.11 --version` | `Python 3.11.x`       |
 
 Jika Python 3.11 belum ada, unduh dari [python.org](https://www.python.org/downloads/). Pada Windows, centang **Add python.exe to PATH** saat memasang.
 
@@ -151,7 +151,7 @@ python -m pip install --upgrade pip
 
 Tanda lingkungan aktif: awalan `(.venv)` muncul di terminal. Seluruh perintah `python` dan `pip` berikutnya memakai lingkungan ini. Setiap membuka terminal baru, aktifkan ulang dengan perintah `activate` di atas.
 
-> Jika PowerShell menolak `Activate.ps1` (pesan *running scripts is disabled*), ada dua jalan. Pertama, izinkan skrip untuk akun Anda sendiri dengan `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Kedua, lewati aktivasi dan panggil Python langsung, misalnya `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+> Jika PowerShell menolak `Activate.ps1` (pesan _running scripts is disabled_), ada dua jalan. Pertama, izinkan skrip untuk akun Anda sendiri dengan `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Kedua, lewati aktivasi dan panggil Python langsung, misalnya `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`.
 
 ### 4.4 Memasang dependensi
 
@@ -165,11 +165,11 @@ Berkas `requirements.txt` hanya memuat dependensi langsung (NumPy, SciPy, pandas
 
 Pilih **satu** jalur sesuai perangkat Anda.
 
-| Perangkat | Perintah |
-|---|---|
+| Perangkat                                  | Perintah                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | GPU NVIDIA (Windows atau Linux), CUDA 12.6 | `python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cu126` |
-| Tanpa GPU (CPU saja) | `python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu` |
-| macOS | `python -m pip install torch==2.14.1` |
+| Tanpa GPU (CPU saja)                       | `python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu`   |
+| macOS                                      | `python -m pip install torch==2.14.1`                                                    |
 
 Catatan:
 
@@ -202,14 +202,14 @@ Tidak memerlukan akun AWS. Perintah ini membuat folder tujuan sendiri dan melanj
 **B. `wget` (Linux, macOS, atau WSL; belum diuji di mesin pengembang karena `wget` tidak terpasang).**
 
 ```bash
-wget -r -N -c -np -nH --cut-dirs=3 -R "index.html*" -P data/raw/sleep-edfx https://physionet.org/files/sleep-edfx/1.0.0/
+wget -r -N -c -np -nH --cut-dirs=3 -R "index.html*" -P data/raw/sleep-edfx [https://physionet.org/files/sleep-edfx/1.0.0/](https://physionet.org/files/sleep-edfx/1.0.0/)
 ```
 
 **C. Peramban (tanpa alat tambahan).** Unduh berkas ZIP (8,1 GB) dari [halaman dataset](https://physionet.org/content/sleep-edfx/1.0.0/), lalu ekstrak isinya ke `data/raw/sleep-edfx/`.
 
 **Tata letak yang benar** setelah unduhan selesai (isi folder harus langsung berada di bawah `data/raw/sleep-edfx/`, tanpa folder perantara seperti `1.0.0/`):
 
-```
+```text
 data/raw/sleep-edfx/
 ├── RECORDS
 ├── RECORDS-v1
@@ -265,30 +265,32 @@ Jika berkas itu muncul sebagai `M` (berubah), data Anda berbeda dari yang diguna
 
 Jalankan notebook **berurutan**, dengan kernel `.venv`. Notebook mencari root repositori sendiri, sehingga dapat dijalankan dari folder mana pun di dalam repositori.
 
-| Berkas | Prasyarat | Keluaran | Keterangan |
-|---|---|---|---|
-| `scripts/edfx_eda.py` | Dataset lengkap | `results/eda/eda_summary.txt`, `eda_records.json` | Ringkasan per rekaman. Hanya membaca header dan hypnogram, tidak membaca sinyal |
-| `notebooks/01_eda.ipynb` | `results/eda/eda_records.json` (sudah di repositori) | 4 grafik di `results/figures/`, 1 tabel di `results/tables/` | Pada akhir sel 3 tercetak `All checks passed` |
-| `notebooks/02_preprocessing.ipynb` | Dataset lengkap | Grafik `02_*` di `results/figures/`, cache 153 berkas di `data/processed/sc/`, manifes `results/tables/02_cache_manifest.csv` | Sel terakhir (J2) mencetak `153 files, 3.55 GB, ...; 195,469 labelled epochs; max float16 error 0.0078` |
-| `notebooks/03_baseline.ipynb` | Cache notebook 02 | Grafik `03_*` di `results/figures/`, tabel `03_baseline_*.csv` di `results/tables/`, fitur dan prediksi di `data/processed/` | Sel terakhir mencetak `Baseline to beat in phase 3: SC-20 MF1 79.2 / kappa 0.784; SC-78 MF1 76.5 / kappa 0.739` |
+| Berkas                             | Prasyarat                                            | Keluaran                                                                                                                                          | Keterangan                                                                                                        |
+| ---------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `scripts/edfx_eda.py`              | Dataset lengkap                                      | `results/eda/eda_summary.txt`, `eda_records.json`                                                                                                 | Ringkasan per rekaman. Hanya membaca header dan hypnogram, tidak membaca sinyal                                   |
+| `notebooks/01_eda.ipynb`           | `results/eda/eda_records.json` (sudah di repositori) | 4 grafik di `results/figures/`, 1 tabel di `results/tables/`                                                                                      | Pada akhir sel 3 tercetak `All checks passed`                                                                     |
+| `notebooks/02_preprocessing.ipynb` | Dataset lengkap                                      | Grafik `02_*` di `results/figures/`, cache 153 berkas di `data/processed/sc/`, manifes `results/tables/02_cache_manifest.csv`                     | Sel terakhir (J2) mencetak `153 files, 3.55 GB, ...; 195,469 labelled epochs; max float16 error 0.0078`           |
+| `notebooks/03_baseline.ipynb`      | Cache notebook 02                                    | Grafik `03_*` di `results/figures/`, tabel `03_baseline_*.csv` di `results/tables/`, fitur dan prediksi di `data/processed/`                      | Sel terakhir mencetak `Baseline to beat in phase 3: SC-20 MF1 79.2 / kappa 0.784; SC-78 MF1 76.5 / kappa 0.739`   |
+| `notebooks/04_cnn_model.ipynb`     | Cache notebook 02                                    | Grafik `04_sc20_confusion_and_curve.png` di `results/figures/`, tabel `04_sc20_*.csv` di `results/tables/`, bobot model di `results/checkpoints/` | Melatih Multi-Branch 1D-CNN + Bi-LSTM dengan Weighted Focal Loss pada SC-20 (20-fold LOSO di GPU / 2-fold di CPU) |
 
 Estimasi waktu, diukur pada klon bersih di Windows 11 dengan jalur CPU:
 
-| Langkah | Waktu |
-|---|---|
-| Membuat `.venv` | ±20 detik |
-| Memasang `requirements.txt` | ±3,5 menit |
-| Memasang PyTorch CPU | ±3,5 menit |
-| `scripts/edfx_eda.py` | kurang dari 2 detik |
-| `01_eda.ipynb` (Run All) | ±20 detik |
-| `02_preprocessing.ipynb` (Run All) | ±6 menit (pemeriksaan mutu I1 dan penulisan cache J1 masing-masing ±2,5 menit) |
-| `03_baseline.ipynb` (Run All) | ±25 menit (ekstraksi fitur ±2 menit, SC-78 10 lipatan ±11 menit) |
-| Mengunduh dataset (8,1 GB) | bergantung koneksi internet |
-| Verifikasi `sha256sum` | ±35 detik |
+| Langkah                            | Waktu                                                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Membuat `.venv`                    | ±20 detik                                                                                                 |
+| Memasang `requirements.txt`        | ±3,5 menit                                                                                                |
+| Memasang PyTorch CPU               | ±3,5 menit                                                                                                |
+| `scripts/edfx_eda.py`              | kurang dari 2 detik                                                                                       |
+| `01_eda.ipynb` (Run All)           | ±20 detik                                                                                                 |
+| `02_preprocessing.ipynb` (Run All) | ±6 menit (pemeriksaan mutu I1 dan penulisan cache J1 masing-masing ±2,5 menit)                            |
+| `03_baseline.ipynb` (Run All)      | ±25 menit (ekstraksi fitur ±2 menit, SC-78 10 lipatan ±11 menit)                                          |
+| `04_cnn_model.ipynb` (Run All)     | ±25–30 menit pada GPU RTX 3050 (20 lipatan LOSO penuh); ±3–4 menit pada CPU (2 lipatan pemeriksaan cepat) |
+| Mengunduh dataset (8,1 GB)         | bergantung koneksi internet                                                                               |
+| Verifikasi `sha256sum`             | ±35 detik                                                                                                 |
 
 Waktu pemasangan paket bergantung pada kecepatan internet. Notebook 02 menulis cache sekitar 3,55 GB ke `data/processed/sc/`; folder ini diabaikan git dan dapat dibuat ulang kapan saja.
 
-> Menjalankan ulang notebook akan membuat git mencatat `01_eda.ipynb`, `02_preprocessing.ipynb`, dan grafik di `results/figures/` sebagai *modified*, karena gambar hasil render berbeda beberapa piksel antar komputer. Itu normal. Jangan commit perubahan tersebut kecuali Anda memang mengubah analisisnya; untuk membatalkannya, jalankan `git restore notebooks results/figures`.
+> Menjalankan ulang notebook akan membuat git mencatat `01_eda.ipynb`, `02_preprocessing.ipynb`, dan grafik di `results/figures/` sebagai _modified_, karena gambar hasil render berbeda beberapa piksel antar komputer. Itu normal. Jangan commit perubahan tersebut kecuali Anda memang mengubah analisisnya; untuk membatalkannya, jalankan `git restore notebooks results/figures`.
 
 Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ada di `docs/belajar/`.
 
@@ -296,7 +298,7 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 
 ## 6. Struktur repositori
 
-```
+```text
 .
 ├── configs/                  # konfigurasi percobaan (YAML), satu berkas per eksperimen (belum dipakai)
 ├── data/
@@ -304,16 +306,17 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 │   └── processed/            # cache pre-processing (sc/), fitur dan prediksi baseline (tidak di-commit)
 ├── docs/
 │   ├── analisis/             # analisis proyek secara menyeluruh
-│   ├── belajar/              # bahan belajar per notebook (01, 02, 03)
+│   ├── belajar/              # bahan belajar per notebook (01, 02, 03, 04)
 │   └── catatan/              # catatan perubahan Ref-1 dan keputusan desain
 ├── notebooks/
 │   ├── 01_eda.ipynb          # EDA
 │   ├── 02_preprocessing.ipynb  # Fase 1: pre-processing dan cache
-│   └── 03_baseline.ipynb     # Fase 2: baseline klasik
+│   ├── 03_baseline.ipynb     # Fase 2: baseline klasik
+│   └── 04_cnn_model.ipynb    # Fase 3: model deep learning awal (Multi-Branch 1D-CNN + Bi-LSTM) pada SC-20
 ├── results/
 │   ├── eda/                  # ringkasan EDA (eda_records.json, eda_summary.txt)
 │   ├── ablation/             # hasil baseline awal sebelum pre-processing (riwayat)
-│   ├── figures/              # grafik (awalan 01_, 02_, 03_ mengikuti notebook)
+│   ├── figures/              # grafik (awalan 01_, 02_, 03_, 04_ mengikuti notebook)
 │   ├── tables/               # tabel hasil
 │   ├── logs/                 # log pelatihan (belum dipakai)
 │   └── checkpoints/          # bobot model (tidak di-commit)
@@ -338,25 +341,25 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 - [x] EDA: profil dataset, rata-rata waktu per tahap, visualisasi kondisi data
 - [x] Fase 1: pipeline data (pre-processing dan cache)
 - [x] Fase 2: baseline klasik
-- [ ] Fase 3: model deep learning pada SC-20
-- [ ] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
+- [x] Fase 3: model deep learning pada SC-20
+- [ ] Fase 4: benchmark SC-78 (_subject-wise_ cross-validation)
 - [ ] Fase 5: ablasi
 - [ ] Fase 6: uji eksternal ST dan laporan
 
 ### Rincian Fase 1 (`notebooks/02_preprocessing.ipynb`)
 
-| Bagian | Isi | Status |
-|---|---|---|
-| A | Konfigurasi dan parameter tetap | Selesai |
-| B | Inventaris: memasangkan 153 PSG dengan hypnogram | Selesai |
-| C | Anatomi satu rekaman: header, kanal, rentang nilai | Selesai |
-| D | Label per epoch (pemetaan AASM, pemotongan ke panjang sinyal, label −1) dan uji silang dengan EDA | Selesai |
-| E | *Trimming* jendela tidur ±30 menit. Uji unit: 195.469 epoch berlabel | Selesai |
-| F | Penyaringan *band-pass* 0,3 sampai 35 Hz (EEG dan EOG), Butterworth orde 4 fase nol | Selesai |
-| G | Penanganan EMG: *robust scaling*, *clip* ±20, lalu `arcsinh` (keputusan K4) | Selesai |
-| H | Pemotongan epoch dan normalisasi per rekaman (*Robust Scaling*, *clip* ±20) | Selesai |
-| I | Pemeriksaan mutu seluruh 153 rekaman (EEG dan EOG bersih; 17 rekaman EMG ditandai) | Selesai |
-| J | Penyimpanan cache per rekaman dan verifikasi muat ulang | Selesai |
+| Bagian | Isi                                                                                               | Status  |
+| ------ | ------------------------------------------------------------------------------------------------- | ------- |
+| A      | Konfigurasi dan parameter tetap                                                                   | Selesai |
+| B      | Inventaris: memasangkan 153 PSG dengan hypnogram                                                  | Selesai |
+| C      | Anatomi satu rekaman: header, kanal, rentang nilai                                                | Selesai |
+| D      | Label per epoch (pemetaan AASM, pemotongan ke panjang sinyal, label −1) dan uji silang dengan EDA | Selesai |
+| E      | _Trimming_ jendela tidur ±30 menit. Uji unit: 195.469 epoch berlabel                              | Selesai |
+| F      | Penyaringan _band-pass_ 0,3 sampai 35 Hz (EEG dan EOG), Butterworth orde 4 fase nol               | Selesai |
+| G      | Penanganan EMG: _robust scaling_, _clip_ ±20, lalu `arcsinh` (keputusan K4)                       | Selesai |
+| H      | Pemotongan epoch dan normalisasi per rekaman (_Robust Scaling_, _clip_ ±20)                       | Selesai |
+| I      | Pemeriksaan mutu seluruh 153 rekaman (EEG dan EOG bersih; 17 rekaman EMG ditandai)                | Selesai |
+| J      | Penyimpanan cache per rekaman dan verifikasi muat ulang                                           | Selesai |
 
 Keluaran akhir Fase 1 per rekaman: EEG 2 kanal (N × 2 × 3.000), EOG (N × 3.000), EMG (N × 30), label (0 sampai 4, dan −1 untuk epoch yang diabaikan), serta metadata (ID subjek, malam, usia, nomor epoch, jendela, statistik normalisasi). Seluruhnya tersimpan di `data/processed/sc/` (153 berkas, 3,55 GB), dengan ringkasan per rekaman di `results/tables/02_cache_manifest.csv`.
 
@@ -366,51 +369,51 @@ Keluaran akhir Fase 1 per rekaman: EEG 2 kanal (N × 2 × 3.000), EOG (N × 3.00
 
 ### Profil dataset (EDA)
 
-| Besaran | Nilai |
-|---|---|
-| Total rekaman | 197 (SC 153, ST 44) |
-| Total durasi | 3.849,0 jam ≈ 461.870 epoch |
-| Rekaman SC | 78 subjek, usia 25 sampai 101 tahun, rata-rata 22,7 jam per rekaman |
-| Epoch berlabel SC-78 | 414.961 sebelum *trimming*, 195.469 sesudahnya |
+| Besaran              | Nilai                                                               |
+| -------------------- | ------------------------------------------------------------------- |
+| Total rekaman        | 197 (SC 153, ST 44)                                                 |
+| Total durasi         | 3.849,0 jam ≈ 461.870 epoch                                         |
+| Rekaman SC           | 78 subjek, usia 25 sampai 101 tahun, rata-rata 22,7 jam per rekaman |
+| Epoch berlabel SC-78 | 414.961 sebelum _trimming_, 195.469 sesudahnya                      |
 
-Distribusi kelas SC-78 sebelum dan sesudah *trimming* ±30 menit:
+Distribusi kelas SC-78 sebelum dan sesudah _trimming_ ±30 menit:
 
 | Kelas | Sebelum | Sesudah |
-|---|---|---|
-| Wake | 68,8% | 33,7% |
-| N1 | 5,2% | 11,0% |
-| N2 | 16,7% | 35,4% |
-| N3 | 3,1% | 6,7% |
-| REM | 6,2% | 13,2% |
+| ----- | ------- | ------- |
+| Wake  | 68,8%   | 33,7%   |
+| N1    | 5,2%    | 11,0%   |
+| N2    | 16,7%   | 35,4%   |
+| N3    | 3,1%    | 6,7%    |
+| REM   | 6,2%    | 13,2%   |
 
 Proporsi N3 turun seiring usia: 13,5% pada usia 25 sampai 39 tahun menjadi 2,8% pada usia 80 tahun ke atas.
 
 ### Baseline klasik Fase 2 (`notebooks/03_baseline.ipynb`)
 
-Dihitung dari cache Fase 1 dengan 33 fitur per epoch, konteks ±2 epoch, dan *gradient boosting* berbobot kelas. Validasi per subjek dengan subjek validasi terpisah untuk penghentian dini.
+Dihitung dari cache Fase 1 dengan 33 fitur per epoch, konteks ±2 epoch, dan _gradient boosting_ berbobot kelas. Validasi per subjek dengan subjek validasi terpisah untuk penghentian dini.
 
-| Data | ACC | Macro-F1 | κ | F1-N1 |
-|---|---|---|---|---|
-| SC-20 (20 lipatan, satu subjek per lipatan) | 84,1 | 79,2 | 0,784 | 49,3 |
-| SC-78 (10 lipatan) | 80,7 | 76,5 | 0,739 | 51,0 |
+| Data                                        | ACC  | Macro-F1 | κ     | F1-N1 |
+| ------------------------------------------- | ---- | -------- | ----- | ----- |
+| SC-20 (20 lipatan, satu subjek per lipatan) | 84,1 | 79,2     | 0,784 | 49,3  |
+| SC-78 (10 lipatan)                          | 80,7 | 76,5     | 0,739 | 51,0  |
 
 - **Ablasi modalitas (SC-20):** Macro-F1 naik dari 68,4 (Fpz-Cz saja) menjadi 72,5 (+ Pz-Oz), 75,1 (+ EOG), 76,6 (+ EMG), dan 79,2 (+ konteks).
 - **Kebocoran data (SC-20):** pembagian acak per epoch menaikkan Macro-F1 sekitar 7 poin secara palsu.
 - **Usia (SC-78):** Macro-F1 per subjek turun dari 79,0 (usia 25 sampai 39) menjadi 68,7 (80 tahun ke atas).
 - N1 tetap kelas tersulit: hanya 55 sampai 60% epoch N1 tertebak benar.
 
-Angka ini menjadi batas bawah model *deep learning* pada Fase 3. Penjelasan lengkap ada di `docs/belajar/03_baseline_penjelasan.md`.
+Angka ini menjadi batas bawah model _deep learning_ pada Fase 3. Penjelasan lengkap ada di `docs/belajar/03_baseline_penjelasan.md`.
 
-### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi *subject-wise*)
+### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi _subject-wise_)
 
-| Konfigurasi | Macro-F1 (%) |
-|---|---|
-| EEG Fpz-Cz saja | 59,6 |
-| + EEG Pz-Oz | 65,3 |
-| + EOG | 67,9 |
-| + EMG | 69,1 |
-| + konteks ±2 epoch | 73,7 |
-| + pembobotan kelas | 74,4 |
+| Konfigurasi        | Macro-F1 (%) |
+| ------------------ | ------------ |
+| EEG Fpz-Cz saja    | 59,6         |
+| + EEG Pz-Oz        | 65,3         |
+| + EOG              | 67,9         |
+| + EMG              | 69,1         |
+| + konteks ±2 epoch | 73,7         |
+| + pembobotan kelas | 74,4         |
 
 Bukti kebocoran data: dengan konfigurasi yang sama, pembagian acak per epoch menghasilkan Macro-F1 81,0%, sedangkan pembagian per subjek menghasilkan 73,7%. Selisih ±7 poin itulah yang membuat validasi wajib berbasis subjek.
 
@@ -422,27 +425,29 @@ Berkas hasil ada di `results/ablation/`. Skrip penghasilnya sudah dihapus dari p
 
 Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md).
 
-| Kode | Keputusan | Status |
-|---|---|---|
-| K1 | Epoch *Unscored* dan *Movement time* tetap berada di urutan dengan label −1, dikecualikan dari *loss* dan metrik | Diputuskan |
-| K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Ditunda ke pemodelan |
-| K3 | Eksperimen kebocoran data diulang pada model akhir | Ditunda ke pemodelan |
-| K4 | Transformasi EMG: *robust scaling* per rekaman, *clip* ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Diputuskan |
-| K5 | Baseline Fase 2: 33 fitur + konteks ±2, *gradient boosting* berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi | Diputuskan |
+| Kode | Keputusan                                                                                                                                                                                                                                                         | Status               |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| K1   | Epoch _Unscored_ dan _Movement time_ tetap berada di urutan dengan label −1, dikecualikan dari _loss_ dan metrik                                                                                                                                                  | Diputuskan           |
+| K2   | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi                                                                                                                                                                                               | Ditunda ke pemodelan |
+| K3   | Eksperimen kebocoran data diulang pada model akhir                                                                                                                                                                                                                | Ditunda ke pemodelan |
+| K4   | Transformasi EMG: _robust scaling_ per rekaman, _clip_ ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai)                                                                                                    | Diputuskan           |
+| K5   | Baseline Fase 2: 33 fitur + konteks ±2, _gradient boosting_ berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi                                                                                             | Diputuskan           |
+| K6   | Model _deep learning_ Fase 3: Multi-Branch 1D-CNN (EEG 2 kanal, EOG, EMG) + Bi-LSTM 2 lapis ($L = 20$), Weighted Focal Loss ($\gamma = 2,0$, `ignore_index = -1`), 20-fold LOSO SC-20 dengan _early stopping_ berbasis Macro-F1 validasi dan mode adaptif GPU/CPU | Diputuskan           |
 
 ---
 
 ## 10. Dokumentasi
 
-| Berkas | Isi |
-|---|---|
-| [docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md](docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md) | Analisis proyek secara menyeluruh |
-| [docs/belajar/01_eda_penjelasan.md](docs/belajar/01_eda_penjelasan.md) | Penjelasan notebook EDA sel demi sel |
-| [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md) | Penjelasan notebook pre-processing (Bagian A sampai J) |
-| [docs/belajar/03_baseline_penjelasan.md](docs/belajar/03_baseline_penjelasan.md) | Penjelasan notebook baseline klasik (Fase 2) |
-| [docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md](docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md) | Bahan presentasi progres pre-processing dan usulan revisi dokumen kerangka penelitian |
-| [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md) | Keputusan desain dan alasannya |
-| [docs/catatan/CATATAN_PERUBAHAN_REF1.md](docs/catatan/CATATAN_PERUBAHAN_REF1.md) | Daftar perubahan untuk dokumen kerangka penelitian |
+| Berkas                                                                                             | Isi                                                                                   |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md](docs/analisis/ANALISIS_PROJECT_SLEEP_STAGING.md) | Analisis proyek secara menyeluruh                                                     |
+| [docs/belajar/01_eda_penjelasan.md](docs/belajar/01_eda_penjelasan.md)                             | Penjelasan notebook EDA sel demi sel                                                  |
+| [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md)         | Penjelasan notebook pre-processing (Bagian A sampai J)                                |
+| [docs/belajar/03_baseline_penjelasan.md](docs/belajar/03_baseline_penjelasan.md)                   | Penjelasan notebook baseline klasik (Fase 2)                                          |
+| [docs/belajar/04_cnn_bilstm_penjelasan.md](docs/belajar/04_cnn_bilstm_penjelasan.md)               | Penjelasan notebook model Multi-Branch 1D-CNN + Bi-LSTM pada SC-20 (Fase 3)           |
+| [docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md](docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md)         | Bahan presentasi progres pre-processing dan usulan revisi dokumen kerangka penelitian |
+| [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md)                               | Keputusan desain dan alasannya                                                        |
+| [docs/catatan/CATATAN_PERUBAHAN_REF1.md](docs/catatan/CATATAN_PERUBAHAN_REF1.md)                   | Daftar perubahan untuk dokumen kerangka penelitian                                    |
 
 ---
 
@@ -452,22 +457,22 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 
 1. Ambil perubahan terbaru sebelum mulai: `git pull`.
 2. Kerjakan di cabang sendiri: `git switch -c feat/<topik-singkat>`.
-3. Commit kecil dan bermakna, lalu buka *pull request* ke `master` agar dapat ditinjau.
+3. Commit kecil dan bermakna, lalu buka _pull request_ ke `master` agar dapat ditinjau.
 
 **Format pesan commit** (bahasa Inggris, gaya Conventional Commits): `feat(preprocessing): add trimming section`, `fix(eda): ...`, `docs: ...`, `chore: ...`, `refactor: ...`.
 
 **Aturan yang tidak boleh dilanggar.**
 
-| Aturan | Alasan |
-|---|---|
-| Jangan menulis ke `data/raw/` | Sumber data harus tetap sama untuk semua anggota |
-| Jangan meng-commit data, cache `.npz`, atau bobot model | Ukurannya besar dan sudah diabaikan oleh `.gitignore` |
-| Pembagian *fold* selalu berdasarkan ID subjek | Satu subjek memiliki dua malam rekaman; pembagian per berkas menimbulkan kebocoran data |
-| Jangan menaruh kunci atau kata sandi di repositori | Berkas `.env` diabaikan git; gunakan itu bila perlu |
+| Aturan                                                  | Alasan                                                                                  |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Jangan menulis ke `data/raw/`                           | Sumber data harus tetap sama untuk semua anggota                                        |
+| Jangan meng-commit data, cache `.npz`, atau bobot model | Ukurannya besar dan sudah diabaikan oleh `.gitignore`                                   |
+| Pembagian _fold_ selalu berdasarkan ID subjek           | Satu subjek memiliki dua malam rekaman; pembagian per berkas menimbulkan kebocoran data |
+| Jangan menaruh kunci atau kata sandi di repositori      | Berkas `.env` diabaikan git; gunakan itu bila perlu                                     |
 
 **Notebook.**
 
-- Notebook di-commit **beserta keluarannya** agar pembaca dapat melihat hasil tanpa menjalankan ulang. Sebelum commit, pilih *Restart Kernel and Run All* supaya keluarannya konsisten.
+- Notebook di-commit **beserta keluarannya** agar pembaca dapat melihat hasil tanpa menjalankan ulang. Sebelum commit, pilih _Restart Kernel and Run All_ supaya keluarannya konsisten.
 - Satu notebook sebaiknya dikerjakan satu orang pada satu waktu. Notebook adalah berkas JSON dan sulit digabung bila diedit bersamaan. Bila terjadi konflik, ambil satu versi lalu jalankan ulang seluruh sel.
 - Fungsi yang sudah stabil dipindahkan ke `src/` setelah alurnya terbukti di notebook, bukan sebelumnya.
 
@@ -479,20 +484,20 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 
 ## 12. Pemecahan masalah
 
-| Gejala | Penyebab umum | Solusi |
-|---|---|---|
-| `Activate.ps1 cannot be loaded because running scripts is disabled` | Kebijakan eksekusi PowerShell | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, atau panggil `.\.venv\Scripts\python.exe` langsung |
-| `ModuleNotFoundError: No module named 'numpy'` (atau paket lain) | Kernel notebook bukan `.venv`, atau lingkungan belum aktif | Pilih kernel `.venv` (bagian 4.8). Di terminal, pastikan awalan `(.venv)` tampak |
-| `ModuleNotFoundError: No module named 'edfx_eda'` atau `StopIteration` pada sel pertama | Notebook dibuka di luar folder repositori | Buka folder root repositori di VS Code, bukan hanya berkas notebook |
-| `AssertionError` pada sel inventaris (jumlah pasangan bukan 153) | Dataset belum ada atau salah letak | Cocokkan dengan tata letak di bagian 4.7 (tanpa folder perantara) |
-| `FileNotFoundError ... data/raw/...` | Dataset belum diunduh | Ikuti bagian 4.7 |
-| `IndexError` saat menjalankan `edfx_eda.py` | Folder `sleep-telemetry` tidak ada | Unduh dataset **lengkap** (SC dan ST) |
-| `torch.cuda.is_available()` mengembalikan `False` | Build PyTorch CPU terpasang, atau driver NVIDIA lama | Pasang ulang dengan jalur `cu126` (bagian 4.5) dan periksa `nvidia-smi` |
-| `pip` gagal memasang versi yang diminta | Versi Python bukan 3.11 | Buat ulang `.venv` dengan Python 3.11 |
-| `UnicodeEncodeError` di konsol Windows | Konsol memakai kode halaman lama | Jalankan dari terminal dengan `.venv` aktif (skrip sudah memaksa keluaran UTF-8). Hindari ekstensi Code Runner yang memakai Python global |
-| Kernel `.venv` tidak muncul di VS Code | VS Code belum memindai lingkungan baru | `Ctrl+Shift+P` lalu `Python: Select Interpreter`, atau muat ulang jendela |
-| `sha256sum` melaporkan `FAILED` | Berkas rusak saat unduh | Unduh ulang berkas yang bersangkutan |
-| `git status` menunjukkan `results/eda/...` berubah setelah menjalankan skrip | Data yang dipakai berbeda dari data proyek | Verifikasi data (bagian 4.7), lalu jalankan ulang |
+| Gejala                                                                                  | Penyebab umum                                              | Solusi                                                                                                                                    |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `Activate.ps1 cannot be loaded because running scripts is disabled`                     | Kebijakan eksekusi PowerShell                              | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, atau panggil `.\.venv\Scripts\python.exe` langsung                                 |
+| `ModuleNotFoundError: No module named 'numpy'` (atau paket lain)                        | Kernel notebook bukan `.venv`, atau lingkungan belum aktif | Pilih kernel `.venv` (bagian 4.8). Di terminal, pastikan awalan `(.venv)` tampak                                                          |
+| `ModuleNotFoundError: No module named 'edfx_eda'` atau `StopIteration` pada sel pertama | Notebook dibuka di luar folder repositori                  | Buka folder root repositori di VS Code, bukan hanya berkas notebook                                                                       |
+| `AssertionError` pada sel inventaris (jumlah pasangan bukan 153)                        | Dataset belum ada atau salah letak                         | Cocokkan dengan tata letak di bagian 4.7 (tanpa folder perantara)                                                                         |
+| `FileNotFoundError ... data/raw/...`                                                    | Dataset belum diunduh                                      | Ikuti bagian 4.7                                                                                                                          |
+| `IndexError` saat menjalankan `edfx_eda.py`                                             | Folder `sleep-telemetry` tidak ada                         | Unduh dataset **lengkap** (SC dan ST)                                                                                                     |
+| `torch.cuda.is_available()` mengembalikan `False`                                       | Build PyTorch CPU terpasang, atau driver NVIDIA lama       | Pasang ulang dengan jalur `cu126` (bagian 4.5) dan periksa `nvidia-smi`                                                                   |
+| `pip` gagal memasang versi yang diminta                                                 | Versi Python bukan 3.11                                    | Buat ulang `.venv` dengan Python 3.11                                                                                                     |
+| `UnicodeEncodeError` di konsol Windows                                                  | Konsol memakai kode halaman lama                           | Jalankan dari terminal dengan `.venv` aktif (skrip sudah memaksa keluaran UTF-8). Hindari ekstensi Code Runner yang memakai Python global |
+| Kernel `.venv` tidak muncul di VS Code                                                  | VS Code belum memindai lingkungan baru                     | `Ctrl+Shift+P` lalu `Python: Select Interpreter`, atau muat ulang jendela                                                                 |
+| `sha256sum` melaporkan `FAILED`                                                         | Berkas rusak saat unduh                                    | Unduh ulang berkas yang bersangkutan                                                                                                      |
+| `git status` menunjukkan `results/eda/...` berubah setelah menjalankan skrip            | Data yang dipakai berbeda dari data proyek                 | Verifikasi data (bagian 4.7), lalu jalankan ulang                                                                                         |
 
 Jika masalah belum teratasi, kirim ke grup: sistem operasi Anda, keluaran `python --version`, dan pesan galat lengkapnya.
 
@@ -500,11 +505,11 @@ Jika masalah belum teratasi, kirim ke grup: sistem operasi Anda, keluaran `pytho
 
 ## 13. Dataset, lisensi, dan sitasi
 
-**Dataset.** [Sleep-EDF Database Expanded v1.0.0](https://physionet.org/content/sleep-edfx/1.0.0/), PhysioNet, DOI [10.13026/C2X676](https://doi.org/10.13026/C2X676). Lisensi dataset: *Open Data Commons Attribution License v1.0*. Dataset tidak disertakan di repositori ini; gunakan sesuai ketentuan lisensi tersebut dan kutip sumbernya.
+**Dataset.** [Sleep-EDF Database Expanded v1.0.0](https://physionet.org/content/sleep-edfx/1.0.0/), PhysioNet, DOI [10.13026/C2X676](https://doi.org/10.13026/C2X676). Lisensi dataset: _Open Data Commons Attribution License v1.0_. Dataset tidak disertakan di repositori ini; gunakan sesuai ketentuan lisensi tersebut dan kutip sumbernya.
 
 **Sitasi yang diminta penyedia dataset:**
 
-> B Kemp, AH Zwinderman, B Tuk, HAC Kamphuisen, JJL Oberye. Analysis of a sleep-dependent neuronal feedback loop: the slow-wave microcontinuity of the EEG. *IEEE-BME* 47(9):1185-1194 (2000).
+> B Kemp, AH Zwinderman, B Tuk, HAC Kamphuisen, JJL Oberye. Analysis of a sleep-dependent neuronal feedback loop: the slow-wave microcontinuity of the EEG. _IEEE-BME_ 47(9):1185-1194 (2000).
 
 Sitasi standar PhysioNet tercantum di halaman dataset.
 
@@ -514,4 +519,4 @@ Sitasi standar PhysioNet tercantum di halaman dataset.
 
 ## 14. Penulis
 
-Kelompok 8, mata kuliah *Deep Learning* (AI706), Informatika, Universitas Multimedia Nusantara. Pemilik repositori: Jap Feodrian Calvin (NIM 00000083500).
+Kelompok 8, mata kuliah _Deep Learning_ (AI706), Informatika, Universitas Multimedia Nusantara. Pemilik repositori: Jap Feodrian Calvin (NIM 00000083500).

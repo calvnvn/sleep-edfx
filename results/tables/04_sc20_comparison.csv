@@ -1,0 +1,3 @@
+Model,ACC,Macro-F1,Kappa,F1-N1
+Baseline GBDT (Fase 2),84.1,79.2,0.784,49.3
+Multi-Branch 1D-CNN + Bi-LSTM (Fase 3),82.71,78.62,0.768,50.18
