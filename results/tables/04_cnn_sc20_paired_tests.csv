@@ -1,0 +1,4 @@
+,mean difference (points),subjects where first is better,subjects,Wilcoxon p
+ce vs baseline,0.6376940693474881,12.0,20.0,0.47490501403808594
+focal vs baseline,0.5629360899574737,14.0,20.0,0.20244979858398438
+focal vs ce,-0.07475797939001438,11.0,20.0,0.9272785186767578

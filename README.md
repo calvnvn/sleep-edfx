@@ -10,7 +10,7 @@ Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) unt
 | EDA (`notebooks/01_eda.ipynb`) | Selesai | Profil dataset, rata-rata waktu per tahap, visualisasi kondisi data |
 | Fase 1. Pre-processing (`notebooks/02_preprocessing.ipynb`) | Selesai | Bagian A sampai J: label per epoch, *trimming*, penyaringan, penanganan EMG, normalisasi, pemeriksaan mutu, dan cache 153 rekaman di `data/processed/sc/` |
 | Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`) | Selesai | 33 fitur buatan tangan + *gradient boosting*, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739 |
-| Fase 3. Model deep learning pada SC-20 | Belum | |
+| Fase 3. Model deep learning pada SC-20 (`notebooks/04_cnn_bilstm_sc20.ipynb`) | Selesai (versi perombakan, cabang `feat/phase3-rework`) | CNN 3 cabang + Bi-LSTM, 3 *seed*. CE: MF1 80,1 ± 0,4, κ 0,795; *focal*: MF1 80,2 ± 0,9. Selisih terhadap *baseline* (79,2) belum signifikan (p ≥ 0,20) |
 | Fase 4. Benchmark SC-78 (*subject-wise* cross-validation) | Belum | |
 | Fase 5. Ablasi | Belum | |
 | Fase 6. Uji eksternal ST dan laporan | Belum | |
@@ -309,7 +309,8 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 ├── notebooks/
 │   ├── 01_eda.ipynb          # EDA
 │   ├── 02_preprocessing.ipynb  # Fase 1: pre-processing dan cache
-│   └── 03_baseline.ipynb     # Fase 2: baseline klasik
+│   ├── 03_baseline.ipynb     # Fase 2: baseline klasik
+│   └── 04_cnn_bilstm_sc20.ipynb  # Fase 3: CNN multi-cabang + Bi-LSTM pada SC-20
 ├── results/
 │   ├── eda/                  # ringkasan EDA (eda_records.json, eda_summary.txt)
 │   ├── ablation/             # hasil baseline awal sebelum pre-processing (riwayat)
@@ -338,7 +339,7 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 - [x] EDA: profil dataset, rata-rata waktu per tahap, visualisasi kondisi data
 - [x] Fase 1: pipeline data (pre-processing dan cache)
 - [x] Fase 2: baseline klasik
-- [ ] Fase 3: model deep learning pada SC-20
+- [x] Fase 3: model deep learning pada SC-20 (versi perombakan; selisih terhadap baseline belum signifikan)
 - [ ] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
 - [ ] Fase 5: ablasi
 - [ ] Fase 6: uji eksternal ST dan laporan
@@ -401,6 +402,22 @@ Dihitung dari cache Fase 1 dengan 33 fitur per epoch, konteks ±2 epoch, dan *gr
 
 Angka ini menjadi batas bawah model *deep learning* pada Fase 3. Penjelasan lengkap ada di `docs/belajar/03_baseline_penjelasan.md`.
 
+### CNN multi-cabang + Bi-LSTM Fase 3 (`notebooks/04_cnn_bilstm_sc20.ipynb`)
+
+Jendela 20 epoch, tiga cabang CNN 1D (EEG, EOG, EMG) dan Bi-LSTM dua lapis, SC-20 satu subjek per lipatan dengan subjek validasi yang sama seperti *baseline*. *Cross-entropy* (CE) dan *focal loss* yang sudah dibenahi masing-masing dijalankan dengan tiga *seed* (rerata ± simpangan baku).
+
+| Model | ACC | Macro-F1 | κ | F1-N1 |
+|---|---|---|---|---|
+| *Baseline* Fase 2 | 84,1 | 79,2 | 0,784 | 49,3 |
+| CNN + Bi-LSTM, CE | 85,1 ± 0,1 | 80,1 ± 0,4 | 0,795 ± 0,001 | 53,0 ± 1,1 |
+| CNN + Bi-LSTM, *focal* | 84,5 ± 0,6 | 80,2 ± 0,9 | 0,790 ± 0,008 | 53,4 ± 2,4 |
+
+- Uji Wilcoxon berpasangan per subjek (n = 20) tidak signifikan: CE vs *baseline* p = 0,475, *focal* vs *baseline* p = 0,202, *focal* vs CE p = 0,927. Keunggulan sekitar satu poin Macro-F1 **belum terbukti**.
+- CE dan *focal* menukar profil: CE lebih baik pada Wake, N2, REM; *focal* pada N1 (sensitivitas 60,1%) dan N3.
+- Penurunan Wake dan N2 pada versi pertama tidak terulang pada versi ini.
+
+Penjelasan lengkap ada di `docs/belajar/04_cnn_bilstm_sc20_penjelasan.md` dan keputusan K6.
+
 ### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi *subject-wise*)
 
 | Konfigurasi | Macro-F1 (%) |
@@ -429,6 +446,7 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | K3 | Eksperimen kebocoran data diulang pada model akhir | Ditunda ke pemodelan |
 | K4 | Transformasi EMG: *robust scaling* per rekaman, *clip* ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Diputuskan |
 | K5 | Baseline Fase 2: 33 fitur + konteks ±2, *gradient boosting* berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi | Diputuskan |
+| K6 | Perombakan Fase 3 pada SC-20: jendela 20 epoch, CNN 3 cabang + Bi-LSTM, CE sebagai kontrol dan *focal loss* yang dibenahi, 2 subjek validasi identik dengan baseline, 3 *seed* | Diputuskan |
 
 ---
 
@@ -440,6 +458,7 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | [docs/belajar/01_eda_penjelasan.md](docs/belajar/01_eda_penjelasan.md) | Penjelasan notebook EDA sel demi sel |
 | [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md) | Penjelasan notebook pre-processing (Bagian A sampai J) |
 | [docs/belajar/03_baseline_penjelasan.md](docs/belajar/03_baseline_penjelasan.md) | Penjelasan notebook baseline klasik (Fase 2) |
+| [docs/belajar/04_cnn_bilstm_sc20_penjelasan.md](docs/belajar/04_cnn_bilstm_sc20_penjelasan.md) | Penjelasan notebook CNN multi-cabang + Bi-LSTM (Fase 3, SC-20) |
 | [docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md](docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md) | Bahan presentasi progres pre-processing dan usulan revisi dokumen kerangka penelitian |
 | [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md) | Keputusan desain dan alasannya |
 | [docs/catatan/CATATAN_PERUBAHAN_REF1.md](docs/catatan/CATATAN_PERUBAHAN_REF1.md) | Daftar perubahan untuk dokumen kerangka penelitian |

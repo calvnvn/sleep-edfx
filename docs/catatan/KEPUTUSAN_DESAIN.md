@@ -85,3 +85,40 @@ Selisih ±7 poin (epoch-wise 81,0 vs subject-wise 73,7) saat ini berasal dari GB
 **Catatan.** Selain penghentian dini, tidak ada penyetelan hiperparameter. Pilihan ini disengaja agar *baseline* tetap sederhana dan tidak disetel berlebihan.
 
 **Hasil.** SC-20: MF1 79,2, Kappa 0,784, F1-N1 49,3. SC-78: MF1 76,5, Kappa 0,739, F1-N1 51,0. Angka ini menjadi batas bawah Fase 3.
+
+## K6. Rancangan perombakan Fase 3 pada SC-20 (CNN multi-cabang + Bi-LSTM)
+
+**Status:** Diputuskan (16 November 2026), diterapkan pada `notebooks/04_cnn_bilstm_sc20.ipynb` (cabang `feat/phase3-rework`). Hanya SC-20 yang dijalankan; SC-78 dan ST belum.
+
+**Keputusan.**
+
+1. **Model:** tiga cabang CNN 1D per *epoch* (EEG 2 kanal dan EOG dengan dua jalur kernel paralel 50 dan 400; EMG dengan dua konvolusi kecil) menjadi vektor 224 angka, lalu Bi-LSTM dua lapis (128 unit per arah) dan kepala linear 5 kelas per *epoch* (*many-to-many*). Total 1.089.477 parameter.
+2. **Jendela:** 20 *epoch* (10 menit). Geser 10 *epoch* saat pelatihan dan saat inferensi, dengan peluang jendela tumpang tindih dirata-ratakan. Jendela tidak melintasi rekaman; label −1 tetap berada di urutan tetapi tidak dihitung pada *loss*.
+3. ***Loss*:** *cross-entropy* (CE) sebagai kontrol dan *focal loss* ($\gamma$ = 2) yang dibenahi: $p_t$ adalah peluang kelas benar dan bobot kelas hanya pengali. Bobot kelas berbanding terbalik dengan akar frekuensi, dinormalkan rerata 1 (SC-20: Wake 0,89, N1 1,52, N2 0,60, N3 1,07, REM 0,92).
+4. **Validasi:** SC-20 satu subjek per lipatan; sekitar 10% subjek latih (2 subjek) sebagai validasi, dipilih identik dengan notebook 03 (diperiksa dengan `assert`). Penghentian dini pada Macro-F1 validasi (kesabaran 6, maksimum 30 putaran). Pemilihan *loss* memakai Macro-F1 validasi, bukan nilai uji.
+5. **Pengulangan:** tiga *seed* (0, 1, 2) per *loss*, dilaporkan rerata ± simpangan baku, dengan uji Wilcoxon berpasangan per subjek (n = 20).
+6. **Pengujian sebelum pelatihan:** bentuk keluaran, uji tiga sifat *focal loss*, kesamaan subjek validasi dengan notebook 03, dan uji menghafal 16 jendela (akurasi 100%).
+
+**Alasan.**
+
+1. Versi pertama Fase 3 (cabang rekan tim) memiliki *focal loss* yang salah rumus ($p_t = p^w$), tanpa pembanding CE, validasi satu subjek, dan tanpa pengulangan; selisih kecil terhadap *baseline* sehingga tidak dapat ditafsirkan. Perombakan menutup celah tersebut satu per satu.
+2. Panjang jendela 20 *epoch* dipilih sebagai kompromi konteks dan memori GPU 6 GB; belum dibandingkan dengan panjang lain.
+3. Subjek validasi yang sama dengan *baseline* menghilangkan perbedaan pembagian data sebagai penjelas selisih hasil.
+
+**Hasil (SC-20, rerata ± simpangan baku tiga *seed*).**
+
+| | ACC | MF1 | $\kappa$ | F1-N1 |
+|---|---|---|---|---|
+| CE | 85,1 ± 0,1 | 80,1 ± 0,4 | 0,795 ± 0,001 | 53,0 ± 1,1 |
+| *Focal* | 84,5 ± 0,6 | 80,2 ± 0,9 | 0,790 ± 0,008 | 53,4 ± 2,4 |
+| *Baseline* (K5) | 84,1 | 79,2 | 0,784 | 49,3 |
+
+Uji berpasangan per subjek: CE vs *baseline* selisih +0,64 poin (p = 0,475), *focal* vs *baseline* +0,56 (p = 0,202), *focal* vs CE −0,07 (p = 0,927). Tidak ada yang signifikan.
+
+**Catatan jujur.**
+
+1. **Keunggulan sekitar satu poin MF1 atas *baseline* belum terbukti**; yang lebih jelas hanya F1-N1 (sekitar +4 poin) dan ACC pada CE.
+2. CE terpilih oleh Macro-F1 validasi (82,5 vs 82,4), tetapi selisih 0,1 poin adalah seri praktis. CE dipertahankan karena lebih sederhana dan lebih stabil antar-*seed*.
+3. CE dan *focal* menukar profil: CE lebih baik pada Wake, N2, dan REM, *focal* pada N1 (sensitivitas 60,1% vs 50,5%) dan N3.
+4. Penurunan Wake dan N2 pada versi pertama **tidak terulang** (sensitivitas Wake CE 89,4 dan *focal* 87,9 vs *baseline* 87,5; N2 88,1 dan 84,9 vs 85,0). Penyebabnya tidak dapat dipisahkan karena *loss*, validasi, dan arsitektur diubah sekaligus; dugaan galat *focal loss* konsisten dengan hasil tetapi belum diuji tersendiri.
+5. Hanya satu cabang Fase 3 yang akan digabung ke cabang utama; pemilihannya dibicarakan dengan rekan tim.
