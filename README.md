@@ -11,7 +11,7 @@ Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) unt
 | Fase 1. Pre-processing (`notebooks/02_preprocessing.ipynb`) | Selesai | Bagian A sampai J: label per epoch, *trimming*, penyaringan, penanganan EMG, normalisasi, pemeriksaan mutu, dan cache 153 rekaman di `data/processed/sc/` |
 | Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`) | Selesai | 33 fitur buatan tangan + *gradient boosting*, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739 |
 | Fase 3. Model deep learning pada SC-20 (`notebooks/04_cnn_bilstm_sc20.ipynb`) | Selesai (versi perombakan, cabang `feat/phase3-rework`) | CNN 3 cabang + Bi-LSTM, 3 *seed*. CE: MF1 80,1 ± 0,4, κ 0,795; *focal*: MF1 80,2 ± 0,9. Selisih terhadap *baseline* (79,2) belum signifikan (p ≥ 0,20) |
-| Fase 4. Benchmark SC-78 (*subject-wise* cross-validation) | Belum | |
+| Fase 4. Benchmark SC-78 (`notebooks/05_cnn_bilstm_sc78.ipynb`) | Selesai | Konfigurasi Fase 3 dibekukan, 10 *fold* identik *baseline*, 3 *seed*. MF1 78,0 ± 0,6, κ 0,774 ± 0,005 (*baseline* 76,5 / 0,739). Lebih baik pada 48 dari 78 subjek (p = 0,005), tetapi gagal parah pada 3 subjek |
 | Fase 5. Ablasi | Belum | |
 | Fase 6. Uji eksternal ST dan laporan | Belum | |
 
@@ -271,6 +271,7 @@ Jalankan notebook **berurutan**, dengan kernel `.venv`. Notebook mencari root re
 | `notebooks/01_eda.ipynb` | `results/eda/eda_records.json` (sudah di repositori) | 4 grafik di `results/figures/`, 1 tabel di `results/tables/` | Pada akhir sel 3 tercetak `All checks passed` |
 | `notebooks/02_preprocessing.ipynb` | Dataset lengkap | Grafik `02_*` di `results/figures/`, cache 153 berkas di `data/processed/sc/`, manifes `results/tables/02_cache_manifest.csv` | Sel terakhir (J2) mencetak `153 files, 3.55 GB, ...; 195,469 labelled epochs; max float16 error 0.0078` |
 | `notebooks/03_baseline.ipynb` | Cache notebook 02 | Grafik `03_*` di `results/figures/`, tabel `03_baseline_*.csv` di `results/tables/`, fitur dan prediksi di `data/processed/` | Sel terakhir mencetak `Baseline to beat in phase 3: SC-20 MF1 79.2 / kappa 0.784; SC-78 MF1 76.5 / kappa 0.739` |
+| `notebooks/05_cnn_bilstm_sc78.ipynb` | Cache notebook 02, prediksi notebook 03 dan 04, GPU | Grafik `05_*`, tabel `05_cnn_sc78_*.csv`, *run* per *seed* di `data/processed/cnn_sc78_runs/` | Sel terakhir mencetak `SC-78: CNN + Bi-LSTM MF1 78.0 ± 0.6 vs baseline 76.5; per subject +1.06 points, p = 0.0052`. Sekitar 2,8 jam pada RTX 3050 6 GB; *run* yang terputus dilanjutkan per *fold* |
 
 Estimasi waktu, diukur pada klon bersih di Windows 11 dengan jalur CPU:
 
@@ -304,13 +305,15 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 │   └── processed/            # cache pre-processing (sc/), fitur dan prediksi baseline (tidak di-commit)
 ├── docs/
 │   ├── analisis/             # analisis proyek secara menyeluruh
-│   ├── belajar/              # bahan belajar per notebook (01, 02, 03)
+│   ├── belajar/              # bahan belajar per notebook (01 sampai 06)
 │   └── catatan/              # catatan perubahan Ref-1 dan keputusan desain
 ├── notebooks/
 │   ├── 01_eda.ipynb          # EDA
 │   ├── 02_preprocessing.ipynb  # Fase 1: pre-processing dan cache
 │   ├── 03_baseline.ipynb     # Fase 2: baseline klasik
-│   └── 04_cnn_bilstm_sc20.ipynb  # Fase 3: CNN multi-cabang + Bi-LSTM pada SC-20
+│   ├── 04_cnn_bilstm_sc20.ipynb  # Fase 3: CNN multi-cabang + Bi-LSTM pada SC-20
+│   ├── 05_cnn_bilstm_sc78.ipynb  # Fase 4: benchmark SC-78 dengan konfigurasi beku
+│   └── 06_ablasi_sc20.ipynb      # Fase 5: ablasi pada SC-20
 ├── results/
 │   ├── eda/                  # ringkasan EDA (eda_records.json, eda_summary.txt)
 │   ├── ablation/             # hasil baseline awal sebelum pre-processing (riwayat)
@@ -320,8 +323,10 @@ Panduan membaca tiap sel (analogi, cara membaca keluaran, pertanyaan latihan) ad
 │   └── checkpoints/          # bobot model (tidak di-commit)
 ├── scripts/
 │   └── edfx_eda.py           # pembaca EDF/hypnogram dan ringkasan EDA
-├── src/                      # kode inti; diisi bertahap setelah alurnya terbukti di notebook
-├── tests/                    # pengujian (belum dipakai)
+├── src/
+│   └── sleep_dl.py           # data, model, loss, pelatihan, fold, dan statistik untuk notebook 05 dan 06
+├── tests/
+│   └── test_sleep_dl.py      # bukti bahwa src/sleep_dl.py sama dengan kode notebook 04
 ├── requirements.txt          # dependensi langsung, lintas platform (tanpa PyTorch)
 ├── requirements-lock.txt     # snapshot persis lingkungan pengembang (Windows + CUDA 12.6)
 └── README.md
@@ -340,7 +345,7 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 - [x] Fase 1: pipeline data (pre-processing dan cache)
 - [x] Fase 2: baseline klasik
 - [x] Fase 3: model deep learning pada SC-20 (versi perombakan; selisih terhadap baseline belum signifikan)
-- [ ] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
+- [x] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
 - [ ] Fase 5: ablasi
 - [ ] Fase 6: uji eksternal ST dan laporan
 
@@ -413,10 +418,26 @@ Jendela 20 epoch, tiga cabang CNN 1D (EEG, EOG, EMG) dan Bi-LSTM dua lapis, SC-2
 | CNN + Bi-LSTM, *focal* | 84,5 ± 0,6 | 80,2 ± 0,9 | 0,790 ± 0,008 | 53,4 ± 2,4 |
 
 - Uji Wilcoxon berpasangan per subjek (n = 20) tidak signifikan: CE vs *baseline* p = 0,475, *focal* vs *baseline* p = 0,202, *focal* vs CE p = 0,927. Keunggulan sekitar satu poin Macro-F1 **belum terbukti**.
-- CE dan *focal* menukar profil: CE lebih baik pada Wake, N2, REM; *focal* pada N1 (sensitivitas 60,1%) dan N3.
+- CE (tanpa bobot kelas) dan *focal* (dengan bobot kelas) menukar profil: CE lebih baik pada Wake, N2, REM; *focal* pada N1 (sensitivitas 60,1%) dan N3. Karena bobot kelas ikut berubah, pergeseran ini belum bisa diatribusikan ke *focal loss* (dipisahkan di Fase 5).
 - Penurunan Wake dan N2 pada versi pertama tidak terulang pada versi ini.
 
 Penjelasan lengkap ada di `docs/belajar/04_cnn_bilstm_sc20_penjelasan.md` dan keputusan K6.
+
+### Benchmark SC-78 Fase 4 (`notebooks/05_cnn_bilstm_sc78.ipynb`)
+
+Model Fase 3 (CE tanpa bobot kelas) tanpa penyetelan ulang, 10 *fold* per subjek yang identik dengan *baseline*, tiga *seed*.
+
+| Model | ACC | Macro-F1 | κ | F1-N1 | F1-N3 |
+|---|---|---|---|---|---|
+| *Baseline* Fase 2 | 80,7 | 76,5 | 0,739 | 51,0 | 74,6 |
+| CNN + Bi-LSTM, CE | 83,6 ± 0,4 | 78,0 ± 0,6 | 0,774 ± 0,005 | 52,7 ± 0,8 | 73,7 ± 1,8 |
+
+- Per subjek (n = 78): CNN lebih baik pada 48 subjek, median +1,6 poin, Wilcoxon p = 0,005. Rerata selisih +1,06 poin dengan interval 95% [−0,26; +2,29], karena tiga subjek turun 15 sampai 25 poin pada ketiga *seed*. Model lebih baik untuk subjek tipikal, tetapi belum andal.
+- Sensitivitas N1 dan N3 CNN lebih rendah daripada *baseline*, tetapi *precision*-nya lebih tinggi. Penyebab utamanya bobot kelas: *baseline* berbobot seimbang dan menebak N1 serta N3 lebih sering daripada porsi sebenarnya, sedangkan CNN tidak berbobot.
+- Keunggulan CNN tidak bergantung pada usia (korelasi 0,07), dan tidak hilang pada rekaman dengan EMG bermasalah.
+- Pada subjek SC-20, dilatih dengan sekitar 63 subjek lebih baik daripada dengan 17 subjek (14 dari 20 subjek membaik, p = 0,03). Turunnya MF1 dari 80,1 ke 78,0 berasal dari subjek uji SC-78 yang lebih sulit, bukan dari kemunduran model.
+
+Penjelasan lengkap ada di `docs/belajar/05_cnn_bilstm_sc78_penjelasan.md` dan keputusan K7.
 
 ### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi *subject-wise*)
 
@@ -442,11 +463,13 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | Kode | Keputusan | Status |
 |---|---|---|
 | K1 | Epoch *Unscored* dan *Movement time* tetap berada di urutan dengan label −1, dikecualikan dari *loss* dan metrik | Diputuskan |
-| K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Ditunda ke pemodelan |
-| K3 | Eksperimen kebocoran data diulang pada model akhir | Ditunda ke pemodelan |
+| K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Diuji di Fase 5 (K8) |
+| K3 | Eksperimen kebocoran data diulang pada model akhir | Diuji di Fase 5 (K8) |
 | K4 | Transformasi EMG: *robust scaling* per rekaman, *clip* ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Diputuskan |
 | K5 | Baseline Fase 2: 33 fitur + konteks ±2, *gradient boosting* berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi | Diputuskan |
-| K6 | Perombakan Fase 3 pada SC-20: jendela 20 epoch, CNN 3 cabang + Bi-LSTM, CE sebagai kontrol dan *focal loss* yang dibenahi, 2 subjek validasi identik dengan baseline, 3 *seed* | Diputuskan |
+| K6 | Perombakan Fase 3 pada SC-20: jendela 20 epoch, CNN 3 cabang + Bi-LSTM, CE tanpa bobot kelas sebagai kontrol dan *focal loss* berbobot yang dibenahi, 2 subjek validasi identik dengan baseline, 3 *seed* | Diputuskan (dengan koreksi) |
+| K7 | Fase 4: konfigurasi K6 dibekukan dan dijalankan pada SC-78 dengan fold identik notebook 03, 3 *seed*, kode bersama `src/sleep_dl.py` | Selesai, hasil di K7 |
+| K8 | Fase 5: ablasi satu faktor per lengan pada SC-20 (loss 2×2, konteks waktu, panjang jendela, modalitas, kebocoran) | Diputuskan |
 
 ---
 
@@ -459,6 +482,8 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | [docs/belajar/02_preprocessing_penjelasan.md](docs/belajar/02_preprocessing_penjelasan.md) | Penjelasan notebook pre-processing (Bagian A sampai J) |
 | [docs/belajar/03_baseline_penjelasan.md](docs/belajar/03_baseline_penjelasan.md) | Penjelasan notebook baseline klasik (Fase 2) |
 | [docs/belajar/04_cnn_bilstm_sc20_penjelasan.md](docs/belajar/04_cnn_bilstm_sc20_penjelasan.md) | Penjelasan notebook CNN multi-cabang + Bi-LSTM (Fase 3, SC-20) |
+| [docs/belajar/05_cnn_bilstm_sc78_penjelasan.md](docs/belajar/05_cnn_bilstm_sc78_penjelasan.md) | Penjelasan notebook benchmark SC-78 (Fase 4) |
+| [docs/belajar/06_ablasi_sc20_penjelasan.md](docs/belajar/06_ablasi_sc20_penjelasan.md) | Penjelasan notebook ablasi (Fase 5) |
 | [docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md](docs/catatan/UPDATE_PRESENTASI_FASE1_E-J.md) | Bahan presentasi progres pre-processing dan usulan revisi dokumen kerangka penelitian |
 | [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DESAIN.md) | Keputusan desain dan alasannya |
 | [docs/catatan/CATATAN_PERUBAHAN_REF1.md](docs/catatan/CATATAN_PERUBAHAN_REF1.md) | Daftar perubahan untuk dokumen kerangka penelitian |

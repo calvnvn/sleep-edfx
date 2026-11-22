@@ -94,7 +94,7 @@ Selisih ±7 poin (epoch-wise 81,0 vs subject-wise 73,7) saat ini berasal dari GB
 
 1. **Model:** tiga cabang CNN 1D per *epoch* (EEG 2 kanal dan EOG dengan dua jalur kernel paralel 50 dan 400; EMG dengan dua konvolusi kecil) menjadi vektor 224 angka, lalu Bi-LSTM dua lapis (128 unit per arah) dan kepala linear 5 kelas per *epoch* (*many-to-many*). Total 1.089.477 parameter.
 2. **Jendela:** 20 *epoch* (10 menit). Geser 10 *epoch* saat pelatihan dan saat inferensi, dengan peluang jendela tumpang tindih dirata-ratakan. Jendela tidak melintasi rekaman; label −1 tetap berada di urutan tetapi tidak dihitung pada *loss*.
-3. ***Loss*:** *cross-entropy* (CE) sebagai kontrol dan *focal loss* ($\gamma$ = 2) yang dibenahi: $p_t$ adalah peluang kelas benar dan bobot kelas hanya pengali. Bobot kelas berbanding terbalik dengan akar frekuensi, dinormalkan rerata 1 (SC-20: Wake 0,89, N1 1,52, N2 0,60, N3 1,07, REM 0,92).
+3. ***Loss*:** *cross-entropy* (CE) **tanpa bobot kelas** sebagai kontrol dan *focal loss* ($\gamma$ = 2) yang dibenahi **dengan bobot kelas**: $p_t$ adalah peluang kelas benar dan bobot kelas hanya pengali. Bobot kelas berbanding terbalik dengan akar frekuensi, dinormalkan rerata 1 (SC-20: Wake 0,89, N1 1,52, N2 0,60, N3 1,07, REM 0,92). Lihat koreksi di akhir bagian ini.
 4. **Validasi:** SC-20 satu subjek per lipatan; sekitar 10% subjek latih (2 subjek) sebagai validasi, dipilih identik dengan notebook 03 (diperiksa dengan `assert`). Penghentian dini pada Macro-F1 validasi (kesabaran 6, maksimum 30 putaran). Pemilihan *loss* memakai Macro-F1 validasi, bukan nilai uji.
 5. **Pengulangan:** tiga *seed* (0, 1, 2) per *loss*, dilaporkan rerata ± simpangan baku, dengan uji Wilcoxon berpasangan per subjek (n = 20).
 6. **Pengujian sebelum pelatihan:** bentuk keluaran, uji tiga sifat *focal loss*, kesamaan subjek validasi dengan notebook 03, dan uji menghafal 16 jendela (akurasi 100%).
@@ -122,3 +122,81 @@ Uji berpasangan per subjek: CE vs *baseline* selisih +0,64 poin (p = 0,475), *fo
 3. CE dan *focal* menukar profil: CE lebih baik pada Wake, N2, dan REM, *focal* pada N1 (sensitivitas 60,1% vs 50,5%) dan N3.
 4. Penurunan Wake dan N2 pada versi pertama **tidak terulang** (sensitivitas Wake CE 89,4 dan *focal* 87,9 vs *baseline* 87,5; N2 88,1 dan 84,9 vs 85,0). Penyebabnya tidak dapat dipisahkan karena *loss*, validasi, dan arsitektur diubah sekaligus; dugaan galat *focal loss* konsisten dengan hasil tetapi belum diuji tersendiri.
 5. Hanya satu cabang Fase 3 yang akan digabung ke cabang utama; pemilihannya dibicarakan dengan rekan tim.
+
+**Koreksi (19 November 2026).** Pembandingan "CE vs *focal*" di atas mengubah **dua** hal sekaligus: CE dijalankan tanpa bobot kelas, sedangkan *focal* memakai bobot kelas. Akibatnya:
+
+- Uji pertama *focal loss* di notebook 04 membandingkan $\gamma = 0$ **tanpa bobot** dengan CE tanpa bobot, bukan dengan "CE berbobot" seperti yang tertulis di dokumen penjelasan dan *markdown* notebook. Kodenya benar; uraiannya yang keliru.
+- Perbedaan profil pada catatan nomor 3 (N1 dan N3 lebih baik pada *focal*) tidak bisa diatribusikan ke *focal loss*. Bobot kelas sendiri juga bisa menjelaskannya.
+
+Kedua faktor dipisahkan pada Fase 5 dengan desain 2×2 (keputusan K8).
+
+## K7. Benchmark SC-78 dengan konfigurasi beku (Fase 4)
+
+**Status:** Diputuskan (19 November 2026), diterapkan pada `notebooks/05_cnn_bilstm_sc78.ipynb`.
+
+**Keputusan.**
+
+1. **Konfigurasi dibekukan** sama persis dengan K6: CE tanpa bobot kelas, jendela 20 *epoch*, hiperparameter notebook 04. Tidak ada yang disetel pada SC-78.
+2. **Fold identik dengan notebook 03:** `GroupKFold(10)` atas *epoch* berlabel yang dikelompokkan per subjek, lalu sekitar 10% subjek latih sebagai validasi (`GroupShuffleSplit`, `random_state = 0 + fold`). Bukti: MF1 per *fold* baseline yang dihitung ulang pada *fold* ini sama dengan nilai tersimpan (76,4 ± 2,4).
+3. **Tiga *seed*** (0, 1, 2), dilaporkan rerata ± simpangan baku.
+4. **Pembanding utama:** uji berpasangan per subjek (n = 78) terhadap baseline, dengan interval *bootstrap* 95% dan Wilcoxon. Analisis tambahan: kelompok usia, rekaman EMG bermasalah, dan subjek SC-20 yang dilatih dengan 17 vs sekitar 63 subjek.
+5. **Kode bersama** di `src/sleep_dl.py`, yang dibuktikan setara dengan notebook 04 oleh `tests/test_sleep_dl.py` (bobot awal, keluaran, dan satu pelatihan pendek di CPU identik bit demi bit).
+6. **Data di-*memory-map***, tidak disalin ke RAM, karena SC-78 butuh sekitar 3,5 GB untuk EEG/EOG.
+
+**Alasan.**
+
+1. SC-20 adalah bagian dari SC-78. Bila konfigurasi dipilih ulang memakai hasil uji SC-20 (misalnya dari ablasi Fase 5), angka SC-78 tidak lagi bersih. Membekukan konfigurasi sebelum menjalankan SC-78 mencegah hal itu. Data yang benar-benar independen hanya ST (Fase 6).
+2. Fold yang sama membuat perbandingan per subjek dengan baseline sah. Tanpa itu, selisih bisa berasal dari pembagian data.
+3. Baseline GBDT praktis deterministik (validasi diberikan eksplisit, tanpa *subsampling*), sehingga variasi antar-*run* hanya ada pada model DL. Karena itu DL diulang tiga kali, baseline cukup satu.
+4. Kode yang disalin ke beberapa notebook adalah sumber ketidaksesuaian pada versi pertama Fase 3. Satu modul yang diuji menghilangkan risiko itu.
+
+**Hasil (20 November 2026; SC-78, rerata ± simpangan baku tiga *seed*, sekitar 2,8 jam GPU).**
+
+| | ACC | MF1 | $\kappa$ | F1-N1 | F1-N3 |
+|---|---|---|---|---|---|
+| CNN + Bi-LSTM (CE) | 83,6 ± 0,4 | 78,0 ± 0,6 | 0,774 ± 0,005 | 52,7 ± 0,8 | 73,7 ± 1,8 |
+| *Baseline* (K5) | 80,7 | 76,5 | 0,739 | 51,0 | 74,6 |
+
+Per subjek (n = 78): rerata selisih +1,06 poin, interval *bootstrap* 95% [−0,26; +2,29]; median +1,6; CNN lebih baik pada 48 subjek; Wilcoxon p = 0,0052. Simpangan baku MF1 antar-*fold*: CNN 3,1, *baseline* 2,4.
+
+**Catatan jujur.**
+
+1. **CNN lebih baik untuk subjek tipikal, tetapi rerata keunggulannya per subjek belum terbukti.** Tiga subjek turun jauh di bawah *baseline*: subjek 36 (−25,0; REM tidak terdeteksi, N3 → N2), subjek 17 (−15,4; Wake → REM dan N1), dan subjek 25 (−15,3; N3 tidak pernah diprediksi). Kegagalan ini muncul pada ketiga *seed*. Penyebabnya belum diselidiki.
+2. **Perbedaan sensitivitas N1 (−9,3) dan N3 (−11,4) terutama berasal dari bobot kelas, bukan dari arsitektur.** *Baseline* berbobot seimbang dan menebak N1 pada 14,9% *epoch* (porsi sebenarnya 11,0%) dan N3 pada 8,5% (6,7%). Porsi tebakan CNN hampir sama dengan porsi sebenarnya (10,2% dan 6,6%), dan *precision* N1 serta N3-nya lebih tinggi (54,8 vs 44,3; 74,2 vs 66,7).
+3. Keunggulan tidak berkorelasi dengan usia (r = 0,07). Kedua model kehilangan sekitar 10 poin MF1 dari kelompok 25–39 ke 80+. Uji per kelompok usia bersifat eksploratif; setelah koreksi Holm hanya kelompok 25–39 yang di bawah 0,05, dan kelompok itu adalah subjek SC-20 yang dipakai selama pengembangan.
+4. Rekaman dengan EMG bermasalah menurunkan F1-REM kedua model, tetapi tidak merugikan CNN lebih dari *baseline* (subjek 60+ bertanda: +3,3; tanpa tanda: +1,1). Rekaman tersebut tetap dipakai.
+5. Untuk 20 subjek SC-20, pelatihan dengan sekitar 63 subjek lebih baik daripada dengan 17 subjek (+1,15 poin, 14 dari 20 subjek, p = 0,030). Jumlah dan keragaman data latih berubah bersamaan, sehingga tidak dapat dipisahkan.
+6. *Early stopping* memilih putaran ke-5 (median, rentang 1–18), dan MF1 validasi berfluktuasi beberapa poin antar-putaran. Pemilihan titik henti dengan 7–8 subjek validasi berisik. Perbaikannya (misalnya rerata bobot beberapa putaran) sengaja tidak dikerjakan agar konfigurasi tetap beku.
+7. *Run* sempat dihentikan sistem karena RAM laptop hampir habis, lalu dilanjutkan dari *fold* tersimpan. Satu galat ditemukan dan diperbaiki: pada Windows, `run_cv` tidak menutup berkas *partial* sehingga berkas itu gagal dihapus. Hasil tidak terpengaruh.
+
+## K8. Rancangan ablasi pada SC-20 (Fase 5)
+
+**Status:** Diputuskan (19 November 2026), diterapkan pada `notebooks/06_ablasi_sc20.ipynb`.
+
+**Keputusan.**
+
+1. **Referensi:** model K6 dengan CE tanpa bobot. Setiap lengan mengubah **satu** hal terhadap referensi.
+2. **Lengan dan pertanyaannya:**
+
+| Pertanyaan | Lengan | Yang berubah |
+|---|---|---|
+| *Loss* (2×2) | `ce`, `ce_w`, `focal_uw`, `focal` | γ ∈ {0, 2} × bobot kelas {tidak, ya} |
+| Konteks waktu | `cnn_only` | Bi-LSTM dibuang; tiap *epoch* diklasifikasi dari fitur CNN-nya sendiri |
+| Panjang jendela | `seq10`, `seq30` | L = 10 dan 30; jumlah *epoch* per *batch* dijaga sekitar 640 |
+| Modalitas (kumulatif) | `eeg_fpz`, `eeg_2ch`, `eeg_eog`, `ce` | Fpz-Cz → + Pz-Oz (K2) → + EOG → + EMG |
+| Kebocoran data (K3) | `leak` | Split acak per *epoch* seperti notebook 03; 1 *seed* |
+
+3. **Lengan `ce` dan `focal` dipakai ulang dari notebook 04.** Konfigurasinya diperiksa sama persis, dan modul dibuktikan setara dengan kode notebook 04.
+4. **Bobot kelas pada `ce_w`** dihitung sebagai rerata suku CE berbobot (bukan rerata berbobot bawaan PyTorch), sehingga `ce_w` sama persis dengan *focal* pada γ = 0. Dengan begitu keempat sel 2×2 berbeda hanya pada γ dan bobot.
+5. **Statistik:** selisih berpasangan per subjek terhadap referensi (rerata 3 *seed*), interval *bootstrap* 95%, Wilcoxon dengan koreksi Holm untuk 9 perbandingan; efek utama dan interaksi pada 2×2.
+6. **Tidak dikerjakan:** re-implementasi TinySleepNet (E10 pada dokumen analisis) dan γ = 1.
+
+**Alasan.**
+
+1. Pada Fase 3, CE tanpa bobot dibandingkan dengan *focal* berbobot, sehingga dua faktor berubah bersamaan (lihat koreksi K6). Desain 2×2 memisahkan keduanya.
+2. Tangga modalitas sengaja sama dengan tangga baseline (notebook 03, H1), agar kontribusi tiap modalitas bisa dibandingkan antara GBDT dan DL.
+3. Lengan `cnn_only` mempertahankan jendela dan *batch* yang sama sehingga hanya Bi-LSTM yang hilang; perbedaan jumlah *update* dan *batch* tidak ikut memengaruhi.
+4. Menjaga jumlah *epoch* per *batch* pada L = 10 dan 30 membuat jumlah langkah optimasi per putaran latih tetap sama, sehingga yang berubah hanya panjang konteks.
+5. Kebocoran memakai satu *seed* karena efek yang dicari besar (7 poin pada baseline), jauh di atas variasi antar-*seed* (simpangan baku sekitar 0,4 poin).
+6. Semua keputusan pemilihan memakai Macro-F1 validasi; data uji hanya dilaporkan. Subjek uji SC-20 dipakai oleh semua lengan, jadi ablasi menjelaskan kontribusi komponen, bukan memilih model untuk SC-78 (K7).
+7. TinySleepNet mahal dibuat setia pada aslinya, dan pertanyaan inti proyek (modalitas, *loss*, konteks) sudah dijawab oleh lengan di atas. γ = 1 tidak menambah pertanyaan baru selama γ = 2 pun belum terbukti berbeda dari γ = 0.
