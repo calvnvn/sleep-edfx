@@ -36,15 +36,21 @@ Pada SC, separuh lebih epoch tersebut berasal dari satu rekaman (SC4762E: 148 ep
 
 ## K2. Jumlah kanal EEG pada cabang EEG
 
-**Status:** Ditunda sampai tahap pemodelan.
+**Status:** Diputuskan (22 November 2026) berdasarkan ablasi Fase 5 (K8).
 
-Ref-1 menyebut cabang EEG memakai Fpz-Cz saja. Pada *baseline* GBDT, menambah Pz-Oz menaikkan MF1 dari 59,6 menjadi 65,3. Fase 1 menyimpan **kedua kanal EEG**, sehingga pilihan 1 atau 2 kanal dapat diuji sebagai skenario ablasi tanpa mengulang pre-processing. Model utama mengikuti Ref-1 sampai ablasi menunjukkan sebaliknya.
+**Keputusan.** Model tetap memakai **dua kanal EEG**.
+
+**Bukti.** Pada model CNN + Bi-LSTM, menambah Pz-Oz ke Fpz-Cz menaikkan MF1 per subjek +0,57 poin (interval 95% −0,34 sampai +1,51), membaik pada 12 dari 20 subjek, p = 0,26. Kanal kedua belum terbukti membantu dan juga tidak terbukti merugikan. Dua kanal dipertahankan karena sudah dipakai pada model referensi dan benchmark 78 subjek (K7).
+
+**Rancangan awal.** Ref-1 menyebut cabang EEG memakai Fpz-Cz saja. Pada *baseline* GBDT, menambah Pz-Oz menaikkan MF1 dari 59,6 menjadi 65,3. Fase 1 menyimpan **kedua kanal EEG**, sehingga pilihan 1 atau 2 kanal dapat diuji sebagai skenario ablasi tanpa mengulang pre-processing. Model utama mengikuti Ref-1 sampai ablasi menunjukkan sebaliknya.
 
 ## K3. Eksperimen *data leakage* pada model akhir
 
-**Status:** Ditunda sampai tahap pemodelan.
+**Status:** Selesai (22 November 2026) pada ablasi Fase 5 (K8).
 
-Selisih ±7 poin (epoch-wise 81,0 vs subject-wise 73,7) saat ini berasal dari GBDT. Eksperimen perlu diulang pada model akhir. Syarat untuk Fase 1: setiap epoch menyimpan ID subjek, ID malam, dan nomor urut epoch.
+**Hasil.** Pada model CNN + Bi-LSTM (satu *seed*), pembagian acak per *epoch* menaikkan MF1 dari 80,4 ke 90,6 (+10,2 poin), akurasi dari 85,1 ke 93,3, F1-N1 dari 54,2 ke 75,4, dan κ dari 0,796 ke 0,908. Pada *baseline* GBDT (notebook 03), MF1 naik dari 79,2 ke 86,2 (+7,0). Model yang lebih besar terkena lebih parah; penyebabnya masih dugaan (menghafal ciri khas satu malam rekaman). Skor pada pembagian acak tidak dilaporkan sebagai hasil model.
+
+**Rancangan awal.** Selisih ±7 poin (epoch-wise 81,0 vs subject-wise 73,7) saat ini berasal dari GBDT. Eksperimen perlu diulang pada model akhir. Syarat untuk Fase 1: setiap epoch menyimpan ID subjek, ID malam, dan nomor urut epoch.
 
 ## K4. Transformasi EMG pada Fase 1
 
@@ -200,3 +206,30 @@ Per subjek (n = 78): rerata selisih +1,06 poin, interval *bootstrap* 95% [−0,2
 5. Kebocoran memakai satu *seed* karena efek yang dicari besar (7 poin pada baseline), jauh di atas variasi antar-*seed* (simpangan baku sekitar 0,4 poin).
 6. Semua keputusan pemilihan memakai Macro-F1 validasi; data uji hanya dilaporkan. Subjek uji SC-20 dipakai oleh semua lengan, jadi ablasi menjelaskan kontribusi komponen, bukan memilih model untuk SC-78 (K7).
 7. TinySleepNet mahal dibuat setia pada aslinya, dan pertanyaan inti proyek (modalitas, *loss*, konteks) sudah dijawab oleh lengan di atas. γ = 1 tidak menambah pertanyaan baru selama γ = 2 pun belum terbukti berbeda dari γ = 0.
+
+**Hasil (22 November 2026; SC-20, 20 subjek berusia 25–34 tahun, rerata tiga *seed*, sekitar 11,9 jam GPU untuk lengan baru dan 1,7 jam untuk lengan kebocoran).**
+
+| Lengan | MF1 | κ | Selisih per subjek terhadap referensi (interval 95%) | *p* (Holm, 9 perbandingan) |
+|---|---|---|---|---|
+| `ce` (referensi) | 80,1 ± 0,4 | 0,795 | | |
+| `focal` | 80,2 ± 0,9 | 0,790 | −0,07 (−1,13; +0,95) | 1,00 |
+| `ce_w` | 80,7 ± 0,3 | 0,795 | +0,39 (−0,60; +1,36) | 1,00 |
+| `focal_uw` | 79,9 ± 0,2 | 0,791 | −0,42 (−1,42; +0,61) | 1,00 |
+| `cnn_only` | 77,6 ± 0,1 | 0,769 | **−2,34 (−3,43; −1,37)** | **0,001** |
+| `seq10` | 80,1 ± 0,3 | 0,793 | +0,01 (−0,73; +0,79) | 1,00 |
+| `seq30` | 80,1 ± 0,8 | 0,794 | −0,03 (−0,76; +0,73) | 1,00 |
+| `eeg_fpz` | 78,3 ± 0,4 | 0,778 | −1,75 (−3,21; −0,25) | 0,35 |
+| `eeg_2ch` | 79,0 ± 0,3 | 0,781 | −1,19 (−2,36; +0,07) | 0,49 |
+| `eeg_eog` | 79,9 ± 0,1 | 0,788 | −0,11 (−0,93; +0,77) | 1,00 |
+
+*Baseline* pada *epoch* yang sama: MF1 79,2. Desain 2×2 (selisih per subjek, *p* tanpa koreksi): bobot kelas +0,37 (−0,45; +1,26; p = 0,76), γ = 2 −0,44 (−1,02; +0,13; p = 0,23), interaksi −0,04 (−1,28; +1,07; p = 0,87).
+
+**Catatan jujur.**
+
+1. **Hanya konteks waktu yang terbukti.** Tanpa Bi-LSTM, MF1 turun 2,3 poin per subjek dan 17 dari 20 subjek memburuk, terutama pada REM (−3,4 pada jendela 10), N1 (−6,6), dan Wake (−2,5). Jendela 10, 20, dan 30 *epoch* memberi MF1 yang sama. Tanpa konteks, prediksi berganti tahap 19,5 kali per jam, pakar 12,3, *baseline* 15,1, dan model dengan konteks 10,6–11,5.
+2. **Bobot kelas menggeser keseimbangan, bukan menaikkan mutu.** Sensitivitas N1 naik dari sekitar 50% ke 60% dan N3 dari sekitar 81% ke 85%, tetapi *precision* N1 turun dari sekitar 56% ke 48–50% dan sensitivitas N2 turun 2–3 poin. *Focal loss* tidak menambah apa pun di atas bobot kelas. Koreksi untuk K6: pergeseran profil N1/N3 di notebook 04 berasal dari bobot kelas, bukan dari *focal loss*. CE tanpa bobot tetap dipertahankan sebagai referensi, karena tidak ada lengan yang terbukti lebih baik.
+3. **Tangga modalitas jauh lebih landai pada CNN + Bi-LSTM daripada pada GBDT.** CNN: 78,3 → 79,0 → 79,9 → 80,1; GBDT tanpa konteks: 68,4 → 72,5 → 75,1 → 76,6. Perbandingan ini tidak sepadan, karena GBDT di tabel tidak memakai konteks. Tanpa konteks dan dengan semua sinyal, CNN (77,6) hanya sekitar 1 poin di atas GBDT (76,6), tanpa uji. EMG menaikkan F1-REM 1,8 poin (85,4 → 87,2) tetapi tidak MF1 keseluruhan.
+4. **Daya uji rendah.** Dengan 20 subjek, lebar interval sekitar ±1 poin. "Tidak signifikan" berarti "tidak terbukti", bukan "tidak berpengaruh". Subjek hanya berusia 25–34 tahun.
+5. **Lengan konfirmasi pada SC-78 tidak dijalankan** (biaya sekitar dua kali lipat; konfigurasi SC-78 sudah dibekukan lebih dulu). Temuan ini hanya berlaku untuk 20 subjek tersebut.
+6. **Tiga dugaan belum diuji:** penyebab CNN lebih tahan terhadap hilangnya sinyal, penyebab kebocoran lebih parah pada model besar, dan kecenderungan model dengan konteks terlalu mulus.
+7. Proses sempat terhenti beberapa kali (RAM laptop menipis, laptop masuk mode tidur) dan dilanjutkan dari *fold* tersimpan. Semua lengan selesai tanpa galat.

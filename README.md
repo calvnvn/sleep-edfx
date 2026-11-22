@@ -12,7 +12,7 @@ Proyek akhir *Deep Learning* (Informatika, Universitas Multimedia Nusantara) unt
 | Fase 2. Baseline klasik (`notebooks/03_baseline.ipynb`) | Selesai | 33 fitur buatan tangan + *gradient boosting*, validasi per subjek. SC-20: MF1 79,2, κ 0,784. SC-78: MF1 76,5, κ 0,739 |
 | Fase 3. Model deep learning pada SC-20 (`notebooks/04_cnn_bilstm_sc20.ipynb`) | Selesai (versi perombakan, cabang `feat/phase3-rework`) | CNN 3 cabang + Bi-LSTM, 3 *seed*. CE: MF1 80,1 ± 0,4, κ 0,795; *focal*: MF1 80,2 ± 0,9. Selisih terhadap *baseline* (79,2) belum signifikan (p ≥ 0,20) |
 | Fase 4. Benchmark SC-78 (`notebooks/05_cnn_bilstm_sc78.ipynb`) | Selesai | Konfigurasi Fase 3 dibekukan, 10 *fold* identik *baseline*, 3 *seed*. MF1 78,0 ± 0,6, κ 0,774 ± 0,005 (*baseline* 76,5 / 0,739). Lebih baik pada 48 dari 78 subjek (p = 0,005), tetapi gagal parah pada 3 subjek |
-| Fase 5. Ablasi | Belum | |
+| Fase 5. Ablasi pada SC-20 (`notebooks/06_ablasi_sc20.ipynb`) | Selesai | Sembilan percobaan satu faktor per lengan, 3 *seed*. Hanya konteks waktu yang terbukti (tanpa Bi-LSTM: MF1 −2,3, p Holm 0,001); *loss*, bobot kelas, dan panjang jendela tidak berbeda nyata. Pembagian acak per *epoch* menggelembungkan MF1 10,2 poin. Percobaan konfirmasi SC-78 tidak dijalankan |
 | Fase 6. Uji eksternal ST dan laporan | Belum | |
 
 Rincian per fase ada di bagian [Progress dan roadmap](#7-progress-dan-roadmap).
@@ -346,7 +346,7 @@ Pustaka pembaca EDF di `scripts/edfx_eda.py` (`read_header`, `read_signals`, `re
 - [x] Fase 2: baseline klasik
 - [x] Fase 3: model deep learning pada SC-20 (versi perombakan; selisih terhadap baseline belum signifikan)
 - [x] Fase 4: benchmark SC-78 (*subject-wise* cross-validation)
-- [ ] Fase 5: ablasi
+- [x] Fase 5: ablasi pada SC-20 (hanya konteks waktu yang terbukti; konfirmasi pada 78 subjek tidak dijalankan)
 - [ ] Fase 6: uji eksternal ST dan laporan
 
 ### Rincian Fase 1 (`notebooks/02_preprocessing.ipynb`)
@@ -418,7 +418,7 @@ Jendela 20 epoch, tiga cabang CNN 1D (EEG, EOG, EMG) dan Bi-LSTM dua lapis, SC-2
 | CNN + Bi-LSTM, *focal* | 84,5 ± 0,6 | 80,2 ± 0,9 | 0,790 ± 0,008 | 53,4 ± 2,4 |
 
 - Uji Wilcoxon berpasangan per subjek (n = 20) tidak signifikan: CE vs *baseline* p = 0,475, *focal* vs *baseline* p = 0,202, *focal* vs CE p = 0,927. Keunggulan sekitar satu poin Macro-F1 **belum terbukti**.
-- CE (tanpa bobot kelas) dan *focal* (dengan bobot kelas) menukar profil: CE lebih baik pada Wake, N2, REM; *focal* pada N1 (sensitivitas 60,1%) dan N3. Karena bobot kelas ikut berubah, pergeseran ini belum bisa diatribusikan ke *focal loss* (dipisahkan di Fase 5).
+- CE (tanpa bobot kelas) dan *focal* (dengan bobot kelas) menukar profil: CE lebih baik pada Wake, N2, REM; *focal* pada N1 (sensitivitas 60,1%) dan N3. Karena bobot kelas ikut berubah, pergeseran ini ternyata berasal dari bobot kelas, bukan dari *focal loss* (dipisahkan di Fase 5).
 - Penurunan Wake dan N2 pada versi pertama tidak terulang pada versi ini.
 
 Penjelasan lengkap ada di `docs/belajar/04_cnn_bilstm_sc20_penjelasan.md` dan keputusan K6.
@@ -438,6 +438,26 @@ Model Fase 3 (CE tanpa bobot kelas) tanpa penyetelan ulang, 10 *fold* per subjek
 - Pada subjek SC-20, dilatih dengan sekitar 63 subjek lebih baik daripada dengan 17 subjek (14 dari 20 subjek membaik, p = 0,03). Turunnya MF1 dari 80,1 ke 78,0 berasal dari subjek uji SC-78 yang lebih sulit, bukan dari kemunduran model.
 
 Penjelasan lengkap ada di `docs/belajar/05_cnn_bilstm_sc78_penjelasan.md` dan keputusan K7.
+
+### Ablasi Fase 5 (`notebooks/06_ablasi_sc20.ipynb`)
+
+Sembilan percobaan pada SC-20 (20 subjek, 25–34 tahun, tiga *seed*), masing-masing mengubah satu hal terhadap model Fase 3. Selisih diukur per subjek dengan interval *bootstrap* dan Wilcoxon dengan koreksi Holm.
+
+| Percobaan | MF1 | Selisih per subjek (interval 95%) | *p* (Holm) |
+|---|---|---|---|
+| Referensi (CE tanpa bobot) | 80,1 ± 0,4 | | |
+| CE berbobot / *focal* tanpa bobot / *focal* berbobot | 80,7 / 79,9 / 80,2 | +0,39 / −0,42 / −0,07 | 1,00 |
+| Tanpa Bi-LSTM | 77,6 ± 0,1 | −2,34 (−3,43; −1,37) | 0,001 |
+| Jendela 10 / 30 *epoch* | 80,1 / 80,1 | +0,01 / −0,03 | 1,00 |
+| EEG Fpz-Cz saja / + Pz-Oz / + EOG | 78,3 / 79,0 / 79,9 | −1,75 / −1,19 / −0,11 | 0,35 / 0,49 / 1,00 |
+
+- **Konteks waktu adalah satu-satunya komponen yang terbukti.** Tanpa Bi-LSTM, MF1 turun 2,3 poin (17 dari 20 subjek memburuk). Jendela 10 *epoch* (5 menit) sudah cukup.
+- **Bobot kelas dan *focal loss* tidak mengubah mutu keseluruhan.** Bobot kelas menggeser keseimbangan (sensitivitas N1 sekitar 50% ke 60%, *precision* turun); *focal loss* tidak menambah apa pun di atas bobot kelas.
+- **Sinyal tambahan membantu pelan-pelan** (78,3 ke 80,1), jauh lebih landai daripada *gradient boosting* tanpa konteks (68,4 ke 76,6).
+- **Kebocoran data** menggelembungkan MF1 +10,2 poin pada model akhir (80,4 ke 90,6) dan +7,0 pada *baseline*. Menutup K2 (dua kanal EEG dipertahankan) dan K3.
+- **Batas:** hanya usia 25–34 tahun dan daya uji rendah (selisih di bawah sekitar 1 poin tidak terdeteksi). Percobaan konfirmasi pada 78 subjek tidak dijalankan.
+
+Penjelasan lengkap ada di `docs/belajar/06_ablasi_sc20_penjelasan.md` dan keputusan K8.
 
 ### Baseline klasik awal (riwayat, sebelum pre-processing; GBDT dengan fitur buatan tangan, validasi *subject-wise*)
 
@@ -463,13 +483,13 @@ Dicatat lengkap di [docs/catatan/KEPUTUSAN_DESAIN.md](docs/catatan/KEPUTUSAN_DES
 | Kode | Keputusan | Status |
 |---|---|---|
 | K1 | Epoch *Unscored* dan *Movement time* tetap berada di urutan dengan label −1, dikecualikan dari *loss* dan metrik | Diputuskan |
-| K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Diuji di Fase 5 (K8) |
-| K3 | Eksperimen kebocoran data diulang pada model akhir | Diuji di Fase 5 (K8) |
+| K2 | Fase 1 menyimpan dua kanal EEG; 1 atau 2 kanal diuji sebagai ablasi | Diputuskan: dua kanal dipertahankan (kanal kedua +0,57, belum terbukti) |
+| K3 | Eksperimen kebocoran data diulang pada model akhir | Selesai: +10,2 poin MF1 (CNN), +7,0 (*baseline*) |
 | K4 | Transformasi EMG: *robust scaling* per rekaman, *clip* ±20, lalu `arcsinh` (nilai negatif pada 119 dari 153 rekaman membuat `log` langsung tidak bisa dipakai) | Diputuskan |
 | K5 | Baseline Fase 2: 33 fitur + konteks ±2, *gradient boosting* berbobot kelas, SC-20 satu subjek per lipatan dan SC-78 10 lipatan, penghentian dini pada subjek validasi | Diputuskan |
 | K6 | Perombakan Fase 3 pada SC-20: jendela 20 epoch, CNN 3 cabang + Bi-LSTM, CE tanpa bobot kelas sebagai kontrol dan *focal loss* berbobot yang dibenahi, 2 subjek validasi identik dengan baseline, 3 *seed* | Diputuskan (dengan koreksi) |
 | K7 | Fase 4: konfigurasi K6 dibekukan dan dijalankan pada SC-78 dengan fold identik notebook 03, 3 *seed*, kode bersama `src/sleep_dl.py` | Selesai, hasil di K7 |
-| K8 | Fase 5: ablasi satu faktor per lengan pada SC-20 (loss 2×2, konteks waktu, panjang jendela, modalitas, kebocoran) | Diputuskan |
+| K8 | Fase 5: ablasi satu faktor per lengan pada SC-20 (loss 2×2, konteks waktu, panjang jendela, modalitas, kebocoran) | Diputuskan dan dijalankan |
 
 ---
 
